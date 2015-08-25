@@ -72,6 +72,10 @@ $(function () {
             // { field: 'enum', caption: 'enum', size: '380px', sortable: true, resizable: true, editable: { type: 'enum', items: people } },
             // { field: 'file', caption: 'file', size: '80px', sortable: true, resizable: true, editable: { type: 'file' } },
             // { field: 'radio', caption: 'radio', size: '80px', sortable: true, resizable: true, editable: { type: 'radio' } },
+        ],
+        searches : [
+            { type: 'date', field: 'date', caption: 'date' },
+            { type: 'time', field: 'time', caption: 'time' },
         ]
     });
     var fname = ['Vitali', 'Katsia', 'John', 'Peter', 'Sue', 'Olivia', 'Thomas', 'Sergei', 'Snehal', 'Avinash', 'Divia'];
@@ -84,6 +88,8 @@ $(function () {
             int: 4,
             float: 5,
             money: 6,
+            date: w2utils.formatDate(new Date(1440460800000+i*86400000), w2utils.settings.date_format),
+            time: (i+i/50).toFixed(2).replace(".", ":"),
             check: Math.random() > 0.9 ? true : false,
             select: 2
         });
