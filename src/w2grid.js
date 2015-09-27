@@ -804,14 +804,14 @@
                                 if (obj.parseField(rec, search.field) == sdata.value) fl++; // do not hide record
                                 // only increment "fl" once -> use "else if"
                                 else if (search.type == 'date') {
-                                    var tmp  = (obj.parseField(rec, search.field + '_') instanceof Date ? obj.parseField(rec, search.field + '_') : obj.parseField(rec, search.field));
+                                    var tmp  = getDateField(rec, search);
                                     var val1 = w2utils.formatDate(tmp, 'yyyy-mm-dd');
                                     var val2 = w2utils.formatDate(w2utils.isDate(val2, w2utils.settings.date_format, true),  'yyyy-mm-dd');
                                     if (val1 == val2) fl++;
                                 }
                                 // only increment "fl" once -> use "else if"
                                 else if (search.type == 'time') {
-                                    var tmp  = (obj.parseField(rec, search.field + '_') instanceof Date ? obj.parseField(rec, search.field + '_') : obj.parseField(rec, search.field));
+                                    var tmp  = getTimeField(rec, search);
                                     var val1 = w2utils.formatTime(tmp, 'hh24:mi');
                                     var val2 = w2utils.formatTime(val2, 'hh24:mi');
                                     if (val1 == val2) fl++;
@@ -822,14 +822,14 @@
                                     if (parseFloat(obj.parseField(rec, search.field)) >= parseFloat(val2) && parseFloat(obj.parseField(rec, search.field)) <= parseFloat(val3)) fl++;
                                 }
                                 if (search.type == 'date') {
-                                    var val1 = (obj.parseField(rec, search.field + '_') instanceof Date ? obj.parseField(rec, search.field + '_') : obj.parseField(rec, search.field));
+                                    var val1 = getDateField(rec, search);
                                     var val2 = w2utils.isDate(val2, w2utils.settings.date_format, true);
                                     var val3 = w2utils.isDate(val3, w2utils.settings.date_format, true);
                                     if (val3 != null) val3 = new Date(val3.getTime() + 86400000); // 1 day
                                     if (val1 >= val2 && val1 < val3) fl++;
                                 }
                                 if (search.type == 'time') {
-                                    var val1 = (obj.parseField(rec, search.field + '_') instanceof Date ? obj.parseField(rec, search.field + '_') : obj.parseField(rec, search.field));
+                                    var val1 = getTimeField(rec, search);
                                     var val2 = w2utils.isTime(val2, true);
                                     var val3 = w2utils.isTime(val3, true);
                                     val2 = (new Date()).setHours(val2.hours, val2.minutes, val2.seconds ? val2.seconds : 0, 0);
@@ -842,13 +842,13 @@
                                     if (parseFloat(obj.parseField(rec, search.field)) <= parseFloat(sdata.value)) fl++;
                                 }
                                 else if (search.type == 'date') {
-                                    var tmp  = (obj.parseField(rec, search.field + '_') instanceof Date ? obj.parseField(rec, search.field + '_') : obj.parseField(rec, search.field));
+                                    var tmp  = getDateField(rec, search);
                                     var val1 = w2utils.formatDate(tmp, 'yyyy-mm-dd');
                                     var val2 = w2utils.formatDate(w2utils.isDate(val2, w2utils.settings.date_format, true),  'yyyy-mm-dd');
                                     if (val1 <= val2) fl++;
                                 }
                                 else if (search.type == 'time') {
-                                    var tmp  = (obj.parseField(rec, search.field + '_') instanceof Date ? obj.parseField(rec, search.field + '_') : obj.parseField(rec, search.field));
+                                    var tmp  = getTimeField(rec, search);
                                     var val1 = w2utils.formatTime(tmp, 'hh24:mi');
                                     var val2 = w2utils.formatTime(val2, 'hh24:mi');
                                     if (val1 <= val2) fl++;
@@ -859,13 +859,13 @@
                                     if (parseFloat(obj.parseField(rec, search.field)) >= parseFloat(sdata.value)) fl++;
                                 }
                                 else if (search.type == 'date') {
-                                    var tmp  = (obj.parseField(rec, search.field + '_') instanceof Date ? obj.parseField(rec, search.field + '_') : obj.parseField(rec, search.field));
+                                    var tmp  = getDateField(rec, search);
                                     var val1 = w2utils.formatDate(tmp, 'yyyy-mm-dd');
                                     var val2 = w2utils.formatDate(w2utils.isDate(val2, w2utils.settings.date_format, true),  'yyyy-mm-dd');
                                     if (val1 >= val2) fl++;
                                 }
                                 else if (search.type == 'time') {
-                                    var tmp  = (obj.parseField(rec, search.field + '_') instanceof Date ? obj.parseField(rec, search.field + '_') : obj.parseField(rec, search.field));
+                                    var tmp  = getTimeField(rec, search);
                                     var val1 = w2utils.formatTime(tmp, 'hh24:mi');
                                     var val2 = w2utils.formatTime(val2, 'hh24:mi');
                                     if (val1 >= val2) fl++;
@@ -916,6 +916,34 @@
                 }, 10);
             }
             return time;
+
+            function getDateField(rec, search) {
+                var date = obj.parseField(rec, search.field + '_');     /* field generated by prepareData() */
+                if (date instanceof Date)
+                    return (date);
+                date = obj.parseField(rec, search.field);               /* regular field data */
+                if (date instanceof Date)
+                    return (date);
+                if (date >= 0 || date < 0)
+                    return (0+date);                                    /* ok, comparable to a Number/Date */
+                date = w2utils.isDate(String(date), w2utils.settings.date_format, true);
+                return (date);                                          /* last resort, parse the string */
+            }
+
+            function getTimeField(rec, search) {
+                var date = obj.parseField(rec, search.field + '_');     /* field generated by prepareData() */
+                if (date instanceof Date)
+                    return (date);
+                date = obj.parseField(rec, search.field);               /* regular field data */
+                if (date instanceof Date)
+                    return (date);
+                if (date >= 0 || date < 0)
+                    return (0+date);                                    /* ok, comparable to a Number/Date */
+                date = w2utils.isTime(String(date), true);
+                if (date)
+                    date = (new Date()).setHours(date.hours || 0, date.minutes || 0, date.seconds || 0, 0);
+                return (date);                                          /* last resort, parse the string */
+            }
         },
 
         getRangeData: function (range, extra) {
