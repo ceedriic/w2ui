@@ -88,7 +88,7 @@ $(function () {
             int: 4,
             float: 5,
             money: 6,
-            date: w2utils.formatDate(new Date(1440460800000+i*86400000), w2utils.settings.date_format),
+            date: w2utils.formatDate(new Date(1440460800000+i*86400000), w2utils.settings.dateFormat),
             time: (i+i/50).toFixed(2).replace(".", ":"),
             check: Math.random() > 0.9 ? true : false,
             select: 2
