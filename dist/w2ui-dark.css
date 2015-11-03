@@ -172,10 +172,34 @@ select.w2ui-input {
   border-radius: 3px;
   border: 1px solid #777f8c;
   -webkit-appearance: none;
-  background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAALCAQAAADCIvUBAAAAcElEQVR4AbXLsQEBQADF0H+bAAAtoGUEkCVYygCMAijp7mo1AACAlzr6GXw0adO6U4cG3vuzIcqYxZ3GRDF6BD/9m2sPn54jxOhqHRHUa0gyPVsnJPU6MtjDaknrPRRwm9VR0PsoMVtV1GeoUNG/LAFm8mSWOfmURAAAAABJRU5ErkJggg=='), -webkit-linear-gradient(top, #ffffff 20%, #f6f6f6 50%, #eeeeee 52%, #f4f4f4 100%);
-  background-size: 14px 6px, 100% 100%;
+  background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAALCAQAAACnzwd+AAAAcklEQVR4AcXMsQFBQQDG4P9tAgC0gJYRQJZgKQMwCqCku6vVAAAA+NJHP4KHOk0aV2pRw61n4BBmyOxKQ8I4ehZeuhd3HTx6DQEGZ7sBfr2OOOOj3Yi43kMKs9sZknofOexqZ8npMygwWZTX51CipP+YA1OiZJbYYg9lAAAAAElFTkSuQmCC'), -webkit-linear-gradient(top, #ffffff 20%, #f6f6f6 50%, #eeeeee 52%, #f4f4f4 100%);
+  background-size: 17px 6px, 100% 100%;
   background-position: right center, left top;
   background-repeat: no-repeat, no-repeat;
+}
+.w2ui-icon-expand:before {
+  position: relative;
+  top: 1px;
+  left: 1px;
+  content: ' ';
+  width: 6px;
+  height: 6px;
+  border: 2px solid rgba(150, 150, 150, 0.8);
+  border-bottom: 0;
+  border-left: 0;
+  transform: rotateZ(45deg);
+}
+.w2ui-icon-collapse:before {
+  position: relative;
+  top: -1px;
+  left: 3px;
+  content: ' ';
+  width: 6px;
+  height: 6px;
+  border: 2px solid rgba(150, 150, 150, 0.8);
+  border-bottom: 0;
+  border-left: 0;
+  transform: rotateZ(135deg);
 }
 /* On/Off switch */
 input[type="checkbox"].w2ui-toggle {
@@ -287,7 +311,7 @@ input[type=checkbox].w2ui-toggle:focus {
   margin-bottom: -3px;
 }
 .w2ui-overlay.top-arrow:after {
-  border-bottom: 8px solid #000000;
+  border-bottom: 8px solid black;
   border-bottom-color: inherit;
   border-right: 8px solid transparent;
   border-left: 8px solid transparent;
@@ -302,7 +326,7 @@ input[type=checkbox].w2ui-toggle:focus {
   margin-top: -3px;
 }
 .w2ui-overlay.bottom-arrow:after {
-  border-top: 8px solid #000000;
+  border-top: 8px solid black;
   border-top-color: inherit;
   border-right: 8px solid transparent;
   border-left: 8px solid transparent;
@@ -339,7 +363,7 @@ input[type=checkbox].w2ui-toggle:focus {
   margin-left: 10px;
   margin-top: 0px;
   background-color: rgba(255, 255, 255, 0.82);
-  color: #000000 !important;
+  color: black !important;
   font-size: 11px;
   font-family: verdana;
   text-shadow: 1px 1px 3px #000;
@@ -433,14 +457,14 @@ input[type=checkbox].w2ui-toggle:focus {
   text-align: right;
 }
 .w2ui-overlay table.w2ui-drop-menu td.menu-count > span {
-  border: 2px solid #ffffff;
+  border: 2px solid white;
   border-radius: 20px;
   width: auto;
   height: 18px;
   padding: 2px 7px;
   margin: 3px 5px 0px 5px;
   background-color: #57a7e9;
-  color: #ffffff;
+  color: white;
   box-shadow: 0px 0px 5px #444444;
   text-shadow: 1px 1px 1px #000000;
 }
@@ -543,7 +567,7 @@ input[type=checkbox].w2ui-toggle:focus {
   opacity: 0.8;
   filter: alpha(opacity=80);
   background-color: #555555;
-  color: #ffffff;
+  color: white;
   text-align: center;
   border-radius: 5px;
   border: 2px solid #444444;
@@ -1020,7 +1044,7 @@ button.w2ui-btn-small:focus:before {
   border-top-color: #81C6FF;
 }
 /*
-*    ARROWS 
+*    ARROWS
 */
 .arrow-up {
   background: none;
@@ -1103,7 +1127,7 @@ button.w2ui-btn-small:focus:before {
   outline: 1px solid #666;
   border: 1px solid #fff;
 }
-/* 
+/*
 *    DATE overlay
 */
 .w2ui-calendar {
@@ -1142,7 +1166,7 @@ button.w2ui-btn-small:focus:before {
   width: 110px;
   overflow: hidden;
   padding-top: 5px;
-  border-right: 1px solid #c0c0c0;
+  border-right: 1px solid silver;
 }
 .w2ui-calendar .w2ui-calendar-jump > :last-child {
   position: absolute;
@@ -1174,13 +1198,13 @@ button.w2ui-btn-small:focus:before {
 .w2ui-calendar .w2ui-calendar-jump .w2ui-jump-month:hover,
 .w2ui-calendar .w2ui-calendar-jump .w2ui-jump-year:hover {
   border: 1px solid #c0c8d5;
-  color: #ffffff;
+  color: white;
   background-color: #efefef;
 }
 .w2ui-calendar .w2ui-calendar-jump .w2ui-jump-month.selected,
 .w2ui-calendar .w2ui-calendar-jump .w2ui-jump-year.selected {
   border: 1px solid #c0c8d5;
-  color: #ffffff;
+  color: white;
   background-color: #dadada;
 }
 .w2ui-calendar .w2ui-calendar-previous,
@@ -1262,14 +1286,14 @@ button.w2ui-btn-small:focus:before {
 .w2ui-calendar table.w2ui-calendar-days td.w2ui-saturday:hover,
 .w2ui-calendar table.w2ui-calendar-days td.w2ui-sunday:hover {
   border: 1px solid #c0c8d5;
-  color: #ffffff;
+  color: white;
   background-color: #222222;
 }
 .w2ui-calendar table.w2ui-calendar-days td.w2ui-saturday.w2ui-blocked,
 .w2ui-calendar table.w2ui-calendar-days td.w2ui-sunday.w2ui-blocked {
   text-decoration: line-through;
   border: 1px solid #505c77;
-  color: #c0c0c0;
+  color: silver;
   background-color: #505c77;
 }
 .w2ui-calendar table.w2ui-calendar-days td.w2ui-today {
@@ -1278,7 +1302,7 @@ button.w2ui-btn-small:focus:before {
 }
 .w2ui-calendar table.w2ui-calendar-days td:hover {
   border: 1px solid #c0c8d5;
-  color: #ffffff;
+  color: white;
   background-color: #222222;
 }
 .w2ui-calendar table.w2ui-calendar-days td.w2ui-date-selected {
@@ -1287,7 +1311,7 @@ button.w2ui-btn-small:focus:before {
 .w2ui-calendar table.w2ui-calendar-days td.w2ui-blocked {
   text-decoration: line-through;
   border: 1px solid #505c77;
-  color: #c0c0c0;
+  color: silver;
   background-color: #505c77;
 }
 .w2ui-calendar table.w2ui-calendar-days td.w2ui-day-empty {
@@ -1319,23 +1343,26 @@ button.w2ui-btn-small:focus:before {
 }
 .w2ui-calendar-time td div:hover {
   border: 1px solid #c0c8d5;
-  color: #ffffff;
+  color: white;
   background-color: #222222;
 }
 .w2ui-calendar-time td div.w2ui-blocked {
   text-decoration: line-through;
   border: 1px solid #505c77;
-  color: #c0c0c0;
+  color: silver;
   background-color: #505c77;
 }
 .w2ui-select {
   cursor: default;
   color: black !important;
-  background-image: -webkit-linear-gradient(top,#ffffff 20%,#f6f6f6 50%,#eeeeee 52%,#f4f4f4 100%);
-  background-image: -moz-linear-gradient(top,#ffffff 20%,#f6f6f6 50%,#eeeeee 52%,#f4f4f4 100%);
-  background-image: -ms-linear-gradient(top,#ffffff 20%,#f6f6f6 50%,#eeeeee 52%,#f4f4f4 100%);
-  background-image: -o-linear-gradient(top,#ffffff 20%,#f6f6f6 50%,#eeeeee 52%,#f4f4f4 100%);
-  background-image: linear-gradient(top,#ffffff 20%,#f6f6f6 50%,#eeeeee 52%,#f4f4f4 100%);
+  background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAALCAQAAACnzwd+AAAAcklEQVR4AcXMsQFBQQDG4P9tAgC0gJYRQJZgKQMwCqCku6vVAAAA+NJHP4KHOk0aV2pRw61n4BBmyOxKQ8I4ehZeuhd3HTx6DQEGZ7sBfr2OOOOj3Yi43kMKs9sZknofOexqZ8npMygwWZTX51CipP+YA1OiZJbYYg9lAAAAAElFTkSuQmCC'), -webkit-linear-gradient(top, #ffffff 20%, #f6f6f6 50%, #eeeeee 52%, #f4f4f4 100%);
+  background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAALCAQAAACnzwd+AAAAcklEQVR4AcXMsQFBQQDG4P9tAgC0gJYRQJZgKQMwCqCku6vVAAAA+NJHP4KHOk0aV2pRw61n4BBmyOxKQ8I4ehZeuhd3HTx6DQEGZ7sBfr2OOOOj3Yi43kMKs9sZknofOexqZ8npMygwWZTX51CipP+YA1OiZJbYYg9lAAAAAElFTkSuQmCC'), -moz-linear-gradient(top, #ffffff 20%, #f6f6f6 50%, #eeeeee 52%, #f4f4f4 100%);
+  background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAALCAQAAACnzwd+AAAAcklEQVR4AcXMsQFBQQDG4P9tAgC0gJYRQJZgKQMwCqCku6vVAAAA+NJHP4KHOk0aV2pRw61n4BBmyOxKQ8I4ehZeuhd3HTx6DQEGZ7sBfr2OOOOj3Yi43kMKs9sZknofOexqZ8npMygwWZTX51CipP+YA1OiZJbYYg9lAAAAAElFTkSuQmCC'), -ms-linear-gradient(top, #ffffff 20%, #f6f6f6 50%, #eeeeee 52%, #f4f4f4 100%);
+  background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAALCAQAAACnzwd+AAAAcklEQVR4AcXMsQFBQQDG4P9tAgC0gJYRQJZgKQMwCqCku6vVAAAA+NJHP4KHOk0aV2pRw61n4BBmyOxKQ8I4ehZeuhd3HTx6DQEGZ7sBfr2OOOOj3Yi43kMKs9sZknofOexqZ8npMygwWZTX51CipP+YA1OiZJbYYg9lAAAAAElFTkSuQmCC'), -o-linear-gradient(top, #ffffff 20%, #f6f6f6 50%, #eeeeee 52%, #f4f4f4 100%);
+  background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAALCAQAAACnzwd+AAAAcklEQVR4AcXMsQFBQQDG4P9tAgC0gJYRQJZgKQMwCqCku6vVAAAA+NJHP4KHOk0aV2pRw61n4BBmyOxKQ8I4ehZeuhd3HTx6DQEGZ7sBfr2OOOOj3Yi43kMKs9sZknofOexqZ8npMygwWZTX51CipP+YA1OiZJbYYg9lAAAAAElFTkSuQmCC'), linear-gradient(top, #ffffff 20%, #f6f6f6 50%, #eeeeee 52%, #f4f4f4 100%);
+  background-size: 17px 6px, 100% 100%;
+  background-position: right center, left top;
+  background-repeat: no-repeat, no-repeat;
 }
 .w2ui-select[readonly],
 .w2ui-select[disabled] {
@@ -1756,10 +1783,6 @@ button.w2ui-btn-small:focus:before {
 .w2ui-grid .w2ui-grid-body .w2ui-grid-frecords table tr td.w2ui-inactive {
   background-color: #535d73 !important;
 }
-.w2ui-grid .w2ui-grid-body .w2ui-grid-records .w2ui-expanded,
-.w2ui-grid .w2ui-grid-body .w2ui-grid-frecords .w2ui-expanded {
-  background-color: #CCDCF0 !important;
-}
 .w2ui-grid .w2ui-grid-body .w2ui-grid-records .w2ui-expanded1,
 .w2ui-grid .w2ui-grid-body .w2ui-grid-frecords .w2ui-expanded1 {
   height: 0px;
@@ -1900,6 +1923,14 @@ button.w2ui-btn-small:focus:before {
   height: auto;
   overflow: visible;
   white-space: normal;
+}
+.w2ui-grid .w2ui-grid-body table td.w2ui-grid-data .w2ui-show-children {
+  width: 16px;
+  height: 10px;
+  display: inline-block;
+  position: relative;
+  top: -1px;
+  cursor: pointer;
 }
 .w2ui-grid .w2ui-grid-body table td:last-child {
   border-right: 0px;
@@ -2527,7 +2558,7 @@ button.w2ui-btn-small:focus:before {
 .w2ui-sidebar .w2ui-sidebar-div .w2ui-node .w2ui-node-image:hover,
 .w2ui-sidebar .w2ui-sidebar-div .w2ui-node .w2ui-node-image > span:hover,
 .w2ui-sidebar .w2ui-sidebar-div .w2ui-node td.w2ui-node-dots:hover {
-  color: #ffffff;
+  color: white;
 }
 .w2ui-sidebar .w2ui-sidebar-div .w2ui-node:hover {
   border-top: 1px solid #373f52;
@@ -2670,14 +2701,14 @@ button.w2ui-btn-small:focus:before {
 }
 .w2ui-sidebar .w2ui-sidebar-div td.w2ui-node-data .w2ui-node-count {
   float: right;
-  border: 2px solid #ffffff;
+  border: 2px solid white;
   border-radius: 20px;
   width: auto;
   height: 18px;
   padding: 2px 7px;
   margin: 3px 4px -2px 0;
   background-color: #57a7e9;
-  color: #ffffff;
+  color: white;
   box-shadow: 0px 0px 5px #444444;
   text-shadow: 1px 1px 1px #000000;
   position: relative;
@@ -2716,7 +2747,7 @@ button.w2ui-btn-small:focus:before {
   cursor: default;
 }
 .w2ui-tabs .w2ui-tab.active {
-  color: #ffffff;
+  color: white;
   background-color: #313947;
   border: 1px solid #999999;
   border-bottom: 1px solid transparent;
@@ -2788,12 +2819,17 @@ button.w2ui-btn-small:focus:before {
   opacity: 0.3;
   filter: alpha(opacity=30);
 }
-.w2ui-toolbar.overflowed .w2ui-toolbar-scroll-left,
-.w2ui-toolbar.overflowed .w2ui-toolbar-scroll-right {
+.w2ui-toolbar.overflowed-left .w2ui-toolbar-scroll-left {
   display: block;
 }
-.w2ui-toolbar.overflowed .w2ui-toolbar-scroll-wrapper > table {
-  padding: 0 18px;
+.w2ui-toolbar.overflowed-left .w2ui-toolbar-scroll-wrapper > table {
+  padding-left: 18px;
+}
+.w2ui-toolbar.overflowed-right .w2ui-toolbar-scroll-right {
+  display: block;
+}
+.w2ui-toolbar.overflowed-right .w2ui-toolbar-scroll-wrapper > table {
+  padding-right: 18px;
 }
 .w2ui-toolbar .w2ui-toolbar-scroll-wrapper {
   overflow: hidden;
@@ -2873,13 +2909,13 @@ button.w2ui-btn-small:focus:before {
   padding: 0px 3px 0px 1px;
 }
 .w2ui-toolbar table.w2ui-button .w2ui-tb-count > span {
-  border: 2px solid #ffffff;
+  border: 2px solid white;
   border-radius: 11px;
   width: auto;
   height: 18px;
   padding: 0px 6px 1px 6px;
   background-color: #57a7e9;
-  color: #ffffff;
+  color: white;
   box-shadow: 0px 0px 5px #444444;
   text-shadow: 1px 1px 1px #000000;
 }
@@ -2978,11 +3014,11 @@ button.w2ui-btn-small:focus:before {
 }
 .w2ui-listview > ul > li.w2ui-selected > div > div.description,
 .w2ui-listview > ul > li.w2ui-selected.hover > div > div.description {
-  color: #808080;
+  color: gray;
 }
 .w2ui-listview > ul > li.w2ui-selected > div > div.extra > div > div,
 .w2ui-listview > ul > li.w2ui-selected.hover > div > div.extra > div > div {
-  color: #808080;
+  color: gray;
 }
 .w2ui-listview > ul > li.hover {
   background-color: #373f52;
@@ -3002,14 +3038,14 @@ button.w2ui-btn-small:focus:before {
 .w2ui-listview > ul > li > div > div.description {
   display: none;
   text-align: left;
-  color: #808080;
+  color: gray;
   font-size: 12px;
 }
 .w2ui-listview > ul > li > div > div.extra {
   display: none;
 }
 .w2ui-listview > ul > li > div > div.extra > div > div {
-  color: #808080;
+  color: gray;
 }
 .w2ui-icon-small > ul {
   padding: 1px 0px 0px 1px;
