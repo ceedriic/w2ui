@@ -4188,7 +4188,7 @@
                     }
                     var tmps = false;
                     while (tmp) {
-                        if (!tmp || tmp.classList.contains('w2ui-grid')) break;
+                        if (tmp.classList.contains('w2ui-grid')) break;
                         if (tmp.tagName.toUpperCase() == 'TD') tmps = true;
                         if (tmp.tagName.toUpperCase() != 'TR' && tmps == true) {
                             pos.x += tmp.offsetLeft;
