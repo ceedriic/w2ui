@@ -80,8 +80,8 @@ textarea.w2ui-input {
   padding: 4px;
   border: 1px solid #bbbbbb;
   border-radius: 3px;
-  color: black;
-  background-color: white;
+  color: #000000;
+  background-color: #ffffff;
   line-height: normal;
 }
 input:not([type=button]):not([type=submit]).w2ui-input:focus,
@@ -104,7 +104,7 @@ input.w2ui-input:-ms-input-placeholder {
   color: #aaa !important;
 }
 select.w2ui-input {
-  color: black;
+  color: #000000;
   padding: 4px 15px 4px 7px;
   border-radius: 3px;
   border: 1px solid #bbbbbb;
@@ -248,7 +248,7 @@ input[type=checkbox].w2ui-toggle:focus {
   margin-bottom: -3px;
 }
 .w2ui-overlay.top-arrow:after {
-  border-bottom: 8px solid black;
+  border-bottom: 8px solid #000000;
   border-bottom-color: inherit;
   border-right: 8px solid transparent;
   border-left: 8px solid transparent;
@@ -263,7 +263,7 @@ input[type=checkbox].w2ui-toggle:focus {
   margin-top: -3px;
 }
 .w2ui-overlay.bottom-arrow:after {
-  border-top: 8px solid black;
+  border-top: 8px solid #000000;
   border-top-color: inherit;
   border-right: 8px solid transparent;
   border-left: 8px solid transparent;
@@ -300,7 +300,7 @@ input[type=checkbox].w2ui-toggle:focus {
   margin-left: 10px;
   margin-top: 0px;
   background-color: rgba(60, 60, 60, 0.82);
-  color: white !important;
+  color: #ffffff !important;
   font-size: 11px;
   font-family: verdana;
   text-shadow: 1px 1px 3px #000;
@@ -357,8 +357,8 @@ input[type=checkbox].w2ui-toggle:focus {
 */
 .w2ui-overlay table.w2ui-drop-menu {
   width: 100%;
-  color: black;
-  background-color: white;
+  color: #000000;
+  background-color: #ffffff;
   padding: 5px 0px;
   cursor: default;
 }
@@ -504,7 +504,7 @@ input[type=checkbox].w2ui-toggle:focus {
   opacity: 0.8;
   filter: alpha(opacity=80);
   background-color: #555555;
-  color: white;
+  color: #ffffff;
   text-align: center;
   border-radius: 5px;
   border: 2px solid #444444;
@@ -898,7 +898,7 @@ button.w2ui-btn-small:focus:before {
   width: 110px;
   overflow: hidden;
   padding-top: 5px;
-  border-right: 1px solid silver;
+  border-right: 1px solid #c0c0c0;
 }
 .w2ui-calendar .w2ui-calendar-jump > :last-child {
   position: absolute;
@@ -930,13 +930,13 @@ button.w2ui-btn-small:focus:before {
 .w2ui-calendar .w2ui-calendar-jump .w2ui-jump-month:hover,
 .w2ui-calendar .w2ui-calendar-jump .w2ui-jump-year:hover {
   border: 1px solid #aaaaaa;
-  color: black;
+  color: #000000;
   background-color: #efefef;
 }
 .w2ui-calendar .w2ui-calendar-jump .w2ui-jump-month.selected,
 .w2ui-calendar .w2ui-calendar-jump .w2ui-jump-year.selected {
   border: 1px solid #aaaaaa;
-  color: black;
+  color: #000000;
   background-color: #dadada;
 }
 .w2ui-calendar .w2ui-calendar-previous,
@@ -952,7 +952,7 @@ button.w2ui-btn-small:focus:before {
 }
 .w2ui-calendar .w2ui-calendar-previous:hover,
 .w2ui-calendar .w2ui-calendar-next:hover {
-  border: 1px solid silver;
+  border: 1px solid #c0c0c0;
   background-color: #efefef;
 }
 .w2ui-calendar .w2ui-calendar-previous > div,
@@ -1003,7 +1003,7 @@ button.w2ui-btn-small:focus:before {
 }
 .w2ui-calendar table.w2ui-calendar-days td {
   border: 1px solid #ffffff;
-  color: black;
+  color: #000000;
   background-color: #f9f9f9;
   padding: 6px;
   cursor: default;
@@ -1018,24 +1018,24 @@ button.w2ui-btn-small:focus:before {
 .w2ui-calendar table.w2ui-calendar-days td.w2ui-saturday:hover,
 .w2ui-calendar table.w2ui-calendar-days td.w2ui-sunday:hover {
   border: 1px solid #aaaaaa;
-  color: black;
-  background-color: yellow;
+  color: #000000;
+  background-color: #ffff00;
 }
 .w2ui-calendar table.w2ui-calendar-days td.w2ui-saturday.w2ui-blocked,
 .w2ui-calendar table.w2ui-calendar-days td.w2ui-sunday.w2ui-blocked {
   text-decoration: line-through;
   border: 1px solid #ffffff;
-  color: gray;
+  color: #808080;
   background-color: #ffffff;
 }
 .w2ui-calendar table.w2ui-calendar-days td.w2ui-today {
-  color: black;
+  color: #000000;
   background-color: #e2f7cd;
 }
 .w2ui-calendar table.w2ui-calendar-days td:hover {
   border: 1px solid #aaaaaa;
-  color: black;
-  background-color: yellow;
+  color: #000000;
+  background-color: #ffff00;
 }
 .w2ui-calendar table.w2ui-calendar-days td.w2ui-date-selected {
   border: 1px solid #8cb067;
@@ -1043,7 +1043,7 @@ button.w2ui-btn-small:focus:before {
 .w2ui-calendar table.w2ui-calendar-days td.w2ui-blocked {
   text-decoration: line-through;
   border: 1px solid #ffffff;
-  color: gray;
+  color: #808080;
   background-color: #ffffff;
 }
 .w2ui-calendar table.w2ui-calendar-days td.w2ui-day-empty {
@@ -1052,7 +1052,7 @@ button.w2ui-btn-small:focus:before {
 }
 .w2ui-calendar table.w2ui-calendar-days tr.w2ui-day-title td {
   border: 1px solid #ffffff;
-  color: gray;
+  color: #808080;
   background-color: #ffffff;
   text-align: center;
   padding: 6px;
@@ -1075,13 +1075,13 @@ button.w2ui-btn-small:focus:before {
 }
 .w2ui-calendar-time td div:hover {
   border: 1px solid #aaaaaa;
-  color: black;
-  background-color: yellow;
+  color: #000000;
+  background-color: #ffff00;
 }
 .w2ui-calendar-time td div.w2ui-blocked {
   text-decoration: line-through;
   border: 1px solid #ffffff;
-  color: gray;
+  color: #808080;
   background-color: #ffffff;
 }
 .w2ui-select {
@@ -1112,7 +1112,7 @@ button.w2ui-btn-small:focus:before {
   margin: 0px;
   min-height: 25px;
   overflow: auto;
-  border: 1px solid silver;
+  border: 1px solid #c0c0c0;
   border-radius: 3px;
   font-size: 6px;
   line-height: 100%;
@@ -1121,7 +1121,7 @@ button.w2ui-btn-small:focus:before {
   -ms-box-sizing: border-box;
   -o-box-sizing: border-box;
   box-sizing: border-box;
-  background-color: white;
+  background-color: #ffffff;
 }
 .w2ui-list input[type=text] {
   -webkit-box-shadow: none;

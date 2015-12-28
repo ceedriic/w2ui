@@ -2492,13 +2492,8 @@ w2utils.event = {
                             '               jQuery.fn.w2menuOut(event, \''+ f +'\');"'+
                             '        onclick="event.stopPropagation(); '+
                             '               if ('+ (mitem.disabled === true ? 'true' : 'false') + ') return;'+
-<<<<<<< HEAD
-                            '               $.fn.w2menuClick(event, \''+ f +'\');">'+
-                                seld + imgd +
-=======
                             '               jQuery.fn.w2menuClick(event, \''+ f +'\');">'+
-                                imgd +
->>>>>>> vitmalina/master
+                                seld + imgd +
                             '   <td class="menu-text" colspan="'+ colspan +'">'+ txt +'</td>'+
                             '   <td class="menu-count">'+
                                     (mitem.count != null ? '<span>' + mitem.count + '</span>' : '') +

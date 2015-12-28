@@ -311,7 +311,7 @@ input[type=checkbox].w2ui-toggle:focus {
   margin-bottom: -3px;
 }
 .w2ui-overlay.top-arrow:after {
-  border-bottom: 8px solid black;
+  border-bottom: 8px solid #000000;
   border-bottom-color: inherit;
   border-right: 8px solid transparent;
   border-left: 8px solid transparent;
@@ -326,7 +326,7 @@ input[type=checkbox].w2ui-toggle:focus {
   margin-top: -3px;
 }
 .w2ui-overlay.bottom-arrow:after {
-  border-top: 8px solid black;
+  border-top: 8px solid #000000;
   border-top-color: inherit;
   border-right: 8px solid transparent;
   border-left: 8px solid transparent;
@@ -363,7 +363,7 @@ input[type=checkbox].w2ui-toggle:focus {
   margin-left: 10px;
   margin-top: 0px;
   background-color: rgba(255, 255, 255, 0.82);
-  color: black !important;
+  color: #000000 !important;
   font-size: 11px;
   font-family: verdana;
   text-shadow: 1px 1px 3px #000;
@@ -457,14 +457,14 @@ input[type=checkbox].w2ui-toggle:focus {
   text-align: right;
 }
 .w2ui-overlay table.w2ui-drop-menu td.menu-count > span {
-  border: 2px solid white;
+  border: 2px solid #ffffff;
   border-radius: 20px;
   width: auto;
   height: 18px;
   padding: 2px 7px;
   margin: 3px 5px 0px 5px;
   background-color: #57a7e9;
-  color: white;
+  color: #ffffff;
   box-shadow: 0px 0px 5px #444444;
   text-shadow: 1px 1px 1px #000000;
 }
@@ -567,7 +567,7 @@ input[type=checkbox].w2ui-toggle:focus {
   opacity: 0.8;
   filter: alpha(opacity=80);
   background-color: #555555;
-  color: white;
+  color: #ffffff;
   text-align: center;
   border-radius: 5px;
   border: 2px solid #444444;
@@ -1166,7 +1166,7 @@ button.w2ui-btn-small:focus:before {
   width: 110px;
   overflow: hidden;
   padding-top: 5px;
-  border-right: 1px solid silver;
+  border-right: 1px solid #c0c0c0;
 }
 .w2ui-calendar .w2ui-calendar-jump > :last-child {
   position: absolute;
@@ -1198,13 +1198,13 @@ button.w2ui-btn-small:focus:before {
 .w2ui-calendar .w2ui-calendar-jump .w2ui-jump-month:hover,
 .w2ui-calendar .w2ui-calendar-jump .w2ui-jump-year:hover {
   border: 1px solid #c0c8d5;
-  color: white;
+  color: #ffffff;
   background-color: #efefef;
 }
 .w2ui-calendar .w2ui-calendar-jump .w2ui-jump-month.selected,
 .w2ui-calendar .w2ui-calendar-jump .w2ui-jump-year.selected {
   border: 1px solid #c0c8d5;
-  color: white;
+  color: #ffffff;
   background-color: #dadada;
 }
 .w2ui-calendar .w2ui-calendar-previous,
@@ -1286,14 +1286,14 @@ button.w2ui-btn-small:focus:before {
 .w2ui-calendar table.w2ui-calendar-days td.w2ui-saturday:hover,
 .w2ui-calendar table.w2ui-calendar-days td.w2ui-sunday:hover {
   border: 1px solid #c0c8d5;
-  color: white;
+  color: #ffffff;
   background-color: #222222;
 }
 .w2ui-calendar table.w2ui-calendar-days td.w2ui-saturday.w2ui-blocked,
 .w2ui-calendar table.w2ui-calendar-days td.w2ui-sunday.w2ui-blocked {
   text-decoration: line-through;
   border: 1px solid #505c77;
-  color: silver;
+  color: #c0c0c0;
   background-color: #505c77;
 }
 .w2ui-calendar table.w2ui-calendar-days td.w2ui-today {
@@ -1302,7 +1302,7 @@ button.w2ui-btn-small:focus:before {
 }
 .w2ui-calendar table.w2ui-calendar-days td:hover {
   border: 1px solid #c0c8d5;
-  color: white;
+  color: #ffffff;
   background-color: #222222;
 }
 .w2ui-calendar table.w2ui-calendar-days td.w2ui-date-selected {
@@ -1311,7 +1311,7 @@ button.w2ui-btn-small:focus:before {
 .w2ui-calendar table.w2ui-calendar-days td.w2ui-blocked {
   text-decoration: line-through;
   border: 1px solid #505c77;
-  color: silver;
+  color: #c0c0c0;
   background-color: #505c77;
 }
 .w2ui-calendar table.w2ui-calendar-days td.w2ui-day-empty {
@@ -1343,13 +1343,13 @@ button.w2ui-btn-small:focus:before {
 }
 .w2ui-calendar-time td div:hover {
   border: 1px solid #c0c8d5;
-  color: white;
+  color: #ffffff;
   background-color: #222222;
 }
 .w2ui-calendar-time td div.w2ui-blocked {
   text-decoration: line-through;
   border: 1px solid #505c77;
-  color: silver;
+  color: #c0c0c0;
   background-color: #505c77;
 }
 .w2ui-select {
@@ -2558,7 +2558,7 @@ button.w2ui-btn-small:focus:before {
 .w2ui-sidebar .w2ui-sidebar-div .w2ui-node .w2ui-node-image:hover,
 .w2ui-sidebar .w2ui-sidebar-div .w2ui-node .w2ui-node-image > span:hover,
 .w2ui-sidebar .w2ui-sidebar-div .w2ui-node td.w2ui-node-dots:hover {
-  color: white;
+  color: #ffffff;
 }
 .w2ui-sidebar .w2ui-sidebar-div .w2ui-node:hover {
   border-top: 1px solid #373f52;
@@ -2701,14 +2701,14 @@ button.w2ui-btn-small:focus:before {
 }
 .w2ui-sidebar .w2ui-sidebar-div td.w2ui-node-data .w2ui-node-count {
   float: right;
-  border: 2px solid white;
+  border: 2px solid #ffffff;
   border-radius: 20px;
   width: auto;
   height: 18px;
   padding: 2px 7px;
   margin: 3px 4px -2px 0;
   background-color: #57a7e9;
-  color: white;
+  color: #ffffff;
   box-shadow: 0px 0px 5px #444444;
   text-shadow: 1px 1px 1px #000000;
   position: relative;
@@ -2747,7 +2747,7 @@ button.w2ui-btn-small:focus:before {
   cursor: default;
 }
 .w2ui-tabs .w2ui-tab.active {
-  color: white;
+  color: #ffffff;
   background-color: #313947;
   border: 1px solid #999999;
   border-bottom: 1px solid transparent;
@@ -2909,13 +2909,13 @@ button.w2ui-btn-small:focus:before {
   padding: 0px 3px 0px 1px;
 }
 .w2ui-toolbar table.w2ui-button .w2ui-tb-count > span {
-  border: 2px solid white;
+  border: 2px solid #ffffff;
   border-radius: 11px;
   width: auto;
   height: 18px;
   padding: 0px 6px 1px 6px;
   background-color: #57a7e9;
-  color: white;
+  color: #ffffff;
   box-shadow: 0px 0px 5px #444444;
   text-shadow: 1px 1px 1px #000000;
 }
@@ -3014,11 +3014,11 @@ button.w2ui-btn-small:focus:before {
 }
 .w2ui-listview > ul > li.w2ui-selected > div > div.description,
 .w2ui-listview > ul > li.w2ui-selected.hover > div > div.description {
-  color: gray;
+  color: #808080;
 }
 .w2ui-listview > ul > li.w2ui-selected > div > div.extra > div > div,
 .w2ui-listview > ul > li.w2ui-selected.hover > div > div.extra > div > div {
-  color: gray;
+  color: #808080;
 }
 .w2ui-listview > ul > li.hover {
   background-color: #373f52;
@@ -3038,14 +3038,14 @@ button.w2ui-btn-small:focus:before {
 .w2ui-listview > ul > li > div > div.description {
   display: none;
   text-align: left;
-  color: gray;
+  color: #808080;
   font-size: 12px;
 }
 .w2ui-listview > ul > li > div > div.extra {
   display: none;
 }
 .w2ui-listview > ul > li > div > div.extra > div > div {
-  color: gray;
+  color: #808080;
 }
 .w2ui-icon-small > ul {
   padding: 1px 0px 0px 1px;
