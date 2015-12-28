@@ -8,7 +8,6 @@
 * == NICE TO HAVE ==
 *   - allow this.total to be unknown (-1)
 *   - column autosize based on largest content
-*   - More than 2 layers of header groups
 *   - reorder columns/records
 *   - problem with .set() and arrays, array get extended too, but should be replaced
 *   - after edit stay on the same record option
@@ -50,8 +49,10 @@
 *   - record.w2ui.style[field_name]
 *   - use column field for style: { 1: 'color: red' }
 *   - added focus(), blur(), onFocus, onBlur
-*   - added search.operator, search.value (only for hidden searches)
-*   - hidden searches could not be clearned by the user
+*   - search.simple - if false, will not show up in simple search
+*   - search.operator - default operator to use with search field
+*   - search.hidden - could not be clearned by the user
+*   - search.value - only for hidden searches
 *   - refactor reorderRow (not finished)
 *   - return JSON can now have summary array
 *   - frozen columns
@@ -73,11 +74,11 @@
 *   - update(cells) - added argument cells
 *   - scrollIntoView(..., ..., instant) - added third argument
 *   - added onResizeDblClick
+*   - added onColumnDblClick
 *   - implemented showBubble
 *   - added show.searchAll
 *   - added w2grid.operators
 *   - move events into prototype
-*   - search.simple - if false, will not show up in simple search
 *   - move rec.summary, rec.style, rec.editable -> into rec.w2ui.summary, rec.w2ui.style, rec.w2ui.editable
 *   - record: {
         field1
@@ -98,7 +99,8 @@
             summary: true/false
             style: 'string' - for entire row OR { field: 'string', ...} - per field
         }
-}
+    }
+*   - added this.show.toolbarInput
 *
 ************************************************************************/
 
@@ -133,6 +135,7 @@
             toolbarReload   : true,
             toolbarColumns  : true,
             toolbarSearch   : true,
+            toolbarInput    : true,
             toolbarAdd      : false,
             toolbarEdit     : false,
             toolbarDelete   : false,
@@ -201,7 +204,8 @@
             sel_ind     : null,
             sel_col     : null,
             sel_type    : null,
-            edit_col    : null
+            edit_col    : null,
+            isSafari    : (/^((?!chrome|android).)*safari/i).test(navigator.userAgent)
         };
 
         $.extend(true, this, w2obj.grid, options);
@@ -287,14 +291,14 @@
         msgNotJSON      : 'Returned data is not in valid JSON format.',
         msgAJAXerror    : 'AJAX error. See console for more details.',
         msgRefresh      : 'Refreshing...',
-        msgNeedReload   : 'Your remove data source record count has changed, reloading from the first record.',
+        msgNeedReload   : 'Your remote data source record count has changed, reloading from the first record.',
 
         buttons: {
             'reload'   : { type: 'button', id: 'w2ui-reload', icon: 'w2ui-icon-reload', tooltip: 'Reload data in the list' },
             'columns'  : { type: 'drop', id: 'w2ui-column-on-off', icon: 'w2ui-icon-columns', tooltip: 'Show/hide columns', arrow: false, html: '' },
             'search'   : { type: 'html',   id: 'w2ui-search',
                             html: '<div class="w2ui-icon icon-search-down w2ui-search-down" title="'+ w2utils.lang('Select Search Field') +'" '+
-                                  'onclick="var obj = w2ui[$(this).parents(\'div.w2ui-grid\').attr(\'name\')]; obj.searchShowFields();"></div>'
+                                  'onclick="var obj = w2ui[jQuery(this).parents(\'div.w2ui-grid\').attr(\'name\')]; obj.searchShowFields();"></div>'
                           },
             'search-go': { type: 'drop',  id: 'w2ui-search-advanced', icon: 'w2ui-icon-search', text: 'Search', tooltip: 'Open Search Fields' },
             'add'      : { type: 'button', id: 'w2ui-add', text: 'Add New', tooltip: 'Add new record', icon: 'w2ui-icon-plus' },
@@ -303,6 +307,18 @@
             'save'     : { type: 'button', id: 'w2ui-save', text: 'Save', tooltip: 'Save changed records', icon: 'w2ui-icon-check' }
         },
 
+        operators: { // for search fields
+            "text"    : ['is', 'begins', 'contains', 'ends'],
+            "number"  : ['is', 'between', 'less:less than', 'more:more than'],
+            "date"    : ['is', 'between', 'less:before', 'more:after'],
+            "list"    : ['is'],
+            "enum"    : ['in', 'not in']
+            // -- all posible
+            // "text"    : ['is', 'begins', 'contains', 'ends'],
+            // "number"  : ['is', 'between', 'less:less than', 'more:more than', 'null:is null', 'not null:is not null'],
+            // "list"    : ['is', 'null:is null', 'not null:is not null'],
+            // "enum"    : ['in', 'not in', 'null:is null', 'not null:is not null']
+        },
         // events
         onAdd              : null,
         onEdit             : null,
@@ -317,6 +333,7 @@
         onContextMenu      : null,
         onMenuClick        : null,        // when context menu item selected
         onColumnClick      : null,
+        onColumnDblClick   : null,
         onColumnResize     : null,
         onSort             : null,
         onSearch           : null,
@@ -342,19 +359,6 @@
         onFocus            : null,
         onBlur             : null,
         onReorderRow       : null,
-
-        operators: {
-            "text"    : ['is', 'begins', 'contains', 'ends'],
-            "number"  : ['is', 'between', 'less:less than', 'more:more than'],
-            "date"    : ['is', 'between', 'less:before', 'more:after'],
-            "list"    : ['is'],
-            "enum"    : ['in', 'not in']
-            // -- all posible
-            // "text"    : ['is', 'begins', 'contains', 'ends'],
-            // "number"  : ['is', 'between', 'less:less than', 'more:more than', 'null:is null', 'not null:is not null'],
-            // "list"    : ['is', 'null:is null', 'not null:is not null'],
-            // "enum"    : ['in', 'not in', 'null:is null', 'not null:is not null']
-        },
 
         add: function (record, first) {
             if (!$.isArray(record)) record = [record];
@@ -709,11 +713,15 @@
                     }
                 }
             }
-            // process sort
+
+            // prepare paths and process sort
+            preparePaths();
             this.records.sort(function (a, b) {
-                var ret = compareRecords(a, b);
+                var ret = compareRecordPaths(a, b);
                 return ret;
             });
+            cleanupPaths();
+
             obj.selectionRestore();
             time = (new Date()).getTime() - time;
             if (silent !== true && obj.show.statusSort) {
@@ -723,7 +731,64 @@
             }
             return time;
 
+            // grab paths before sorting for efficiency and because calling obj.get()
+            // while sorting 'obj.records' is unsafe, at least on webkit
+            function preparePaths() {
+                for (var i = 0; i < obj.records.length; i++) {
+                    var rec = obj.records[i];
+                    if (rec.w2ui && rec.w2ui.parent_recid != null)
+                        rec.w2ui._path = getRecordPath(rec);
+                }
+            }
+
+            // cleanup and release memory allocated by preparePaths()
+            function cleanupPaths() {
+                for (var i = 0; i < obj.records.length; i++) {
+                    var rec = obj.records[i];
+                    if (rec.w2ui && rec.w2ui.parent_recid != null)
+                        rec.w2ui._path = null;
+                }
+            }
+
+            // compare two paths, from root of tree to given records
+            function compareRecordPaths(a, b) {
+                if ((!a.w2ui || a.w2ui.parent_recid == null) &&
+                    (!b.w2ui || b.w2ui.parent_recid == null))
+                    return compareRecords(a, b);    // no tree, fast path
+                var pa = getRecordPath(a);
+                var pb = getRecordPath(b);
+                for (var i = 0; i < Math.min(pa.length, pb.length); i++) {
+                    var diff = compareRecords(pa[i], pb[i]);
+                    if (diff != 0)
+                        return diff;                // different subpath
+                }
+                if (pa.length > pb.length)
+                    return 1;
+                if (pa.length < pb.length)
+                    return -1;
+                console.log('ERROR: two paths should not be equal.');
+                return 0;
+            }
+
+            // return an array of all records from root to and including 'rec'
+            function getRecordPath(rec) {
+                if (!rec.w2ui || rec.w2ui.parent_recid == null)
+                    return [ rec ];
+                if (rec.w2ui._path)
+                    return rec.w2ui._path;
+                // during actual sort, we should never reach this point
+                var subrec = obj.get(rec.w2ui.parent_recid);
+                if (!subrec) {
+                    console.log('ERROR: no parent record: '+rec.w2ui.parent_recid);
+                    return [ rec ];
+                }
+                return (getRecordPath(subrec).concat(rec));
+            }
+
+            // compare two records according to sortData and finally recid
             function compareRecords(a, b) {
+                if (a === b)
+                    return 0;   // optimize, same object
                 for (var i = 0; i < obj.sortData.length; i++) {
                     var fld = obj.sortData[i].field;
                     if (obj.sortData[i].field_) fld = obj.sortData[i].field_;
@@ -737,9 +802,15 @@
                     if (ret != 0)
                         return ret;
                 }
+                // break tie for similar records,
+                // required to have consistent ordering for tree paths
+                var ret = compareCells(a.recid, b.recid, -1, 'asc');
+                if (ret != 0)
+                    return ret;
                 return 0;
             }
 
+            // compare two values, aa and bb, producing consistent ordering
             function compareCells(aa, bb, i, direction) {
                 // if both objects are strictly equal, we're done
                 if (aa === bb)
@@ -792,6 +863,7 @@
             var time = (new Date()).getTime();
             var obj = this;
             var defaultToString = {}.toString;
+            var duplicateMap = {};
             this.total = this.records.length;
             // mark all records as shown
             this.last.searchIds = [];
@@ -937,8 +1009,11 @@
                             orNb += fl;
                         }
                     }
-                    if (andNb == andTot && (!orTot || orNb > 0))
+                    if (andNb == andTot && (!orTot || orNb > 0)) {
+                        if (rec && rec.w2ui)
+                            addParent(rec.w2ui.parent_recid);
                         this.last.searchIds.push(parseInt(i));
+                    }
                 }
                 this.total = this.last.searchIds.length;
             }
@@ -976,6 +1051,24 @@
                 if (date)
                     date = (new Date()).setHours(date.hours || 0, date.minutes || 0, date.seconds || 0, 0);
                 return (date);                                          /* last resort, parse the string */
+            }
+
+            // add parents nodes recursively
+            function addParent(recid) {
+                if (recid === undefined)
+                    return;
+                if (duplicateMap[recid])
+                    return; // already visited
+                duplicateMap[recid] = true;
+                var i = obj.get(recid, true);
+                if (i == null)
+                    return;
+                if ($.inArray(i, obj.last.searchIds) != -1)
+                    return;
+                var rec = obj.records[i];
+                if (rec && rec.w2ui)
+                    addParent(rec.w2ui.parent_recid);
+                obj.last.searchIds.push(i);
             }
         },
 
@@ -1203,11 +1296,11 @@
             $(this.box).find('.w2ui-selection-resizer')
                 .off('mousedown').on('mousedown', mouseStart)
                 .off('dblclick').on('dblclick', function (event) {
-                    var eventData = obj.trigger({ phase: 'before', type: 'resizerDblClick', target: obj.name, originalEvent: event });
-                    if (eventData.isCancelled === true) return;
-                    obj.trigger($.extend(eventData, { phase: 'after' }));
+                    var edata = obj.trigger({ phase: 'before', type: 'resizerDblClick', target: obj.name, originalEvent: event });
+                    if (edata.isCancelled === true) return;
+                    obj.trigger($.extend(edata, { phase: 'after' }));
                 });
-            var eventData = { phase: 'before', type: 'selectionExtend', target: obj.name, originalRange: null, newRange: null };
+            var edata = { phase: 'before', type: 'selectionExtend', target: obj.name, originalRange: null, newRange: null };
 
             return (new Date()).getTime() - time;
 
@@ -1245,17 +1338,17 @@
                 var prevNewRange = $.extend({}, mv.newRange);
                 mv.newRange = [{ recid: mv.recid, column: mv.column }, { recid: recid, column: column }];
                 // event before
-                eventData = obj.trigger($.extend(eventData, { originalRange: mv.originalRange, newRange : mv.newRange }));
-                if (eventData.isCancelled === true) {
+                edata = obj.trigger($.extend(edata, { originalRange: mv.originalRange, newRange : mv.newRange }));
+                if (edata.isCancelled === true) {
                     mv.newRange        = prevNewRange;
-                    eventData.newRange = prevNewRange;
+                    edata.newRange = prevNewRange;
                     return;
                 } else {
                     // default behavior
                     obj.removeRange('grid-selection-expand');
                     obj.addRange({
                         name  : 'grid-selection-expand',
-                        range : eventData.newRange,
+                        range : edata.newRange,
                         style : 'background-color: rgba(100,100,100,0.1); border: 2px dotted rgba(100,100,100,0.5);'
                     });
                 }
@@ -1268,7 +1361,7 @@
                 $(document).off('mousemove', mouseMove);
                 $(document).off('mouseup', mouseStop);
                 // event after
-                obj.trigger($.extend(eventData, { phase: 'after' }));
+                obj.trigger($.extend(edata, { phase: 'after' }));
             }
         },
 
@@ -1293,8 +1386,8 @@
                 tmp.multiple = true;
                 tmp.recids   = Array.prototype.slice.call(arguments, 0);
             }
-            var eventData = this.trigger(tmp);
-            if (eventData.isCancelled === true) return 0;
+            var edata = this.trigger(tmp);
+            if (edata.isCancelled === true) return 0;
 
             // default action
             if (this.selectType == 'row') {
@@ -1393,7 +1486,7 @@
             this.status();
             this.addRange('selection');
             // event after
-            this.trigger($.extend(eventData, { phase: 'after' }));
+            this.trigger($.extend(edata, { phase: 'after' }));
             return selected;
         },
 
@@ -1410,8 +1503,8 @@
                 if (this.selectType == 'row') {
                     if (sel.indexes.indexOf(index) == -1) continue;
                     // event before
-                    var eventData = this.trigger({ phase: 'before', type: 'unselect', target: this.name, recid: recid, index: index });
-                    if (eventData.isCancelled === true) continue;
+                    var edata = this.trigger({ phase: 'before', type: 'unselect', target: this.name, recid: recid, index: index });
+                    if (edata.isCancelled === true) continue;
                     // default action
                     sel.indexes.splice(sel.indexes.indexOf(index), 1);
                     recEl1.removeClass('w2ui-selected w2ui-inactive').removeData('selected').find('.w2ui-col-number').removeClass('w2ui-row-selected');
@@ -1432,8 +1525,8 @@
                     var s = sel.columns[index];
                     if (!$.isArray(s) || s.indexOf(col) == -1) continue;
                     // event before
-                    var eventData = this.trigger({ phase: 'before', type: 'unselect', target: this.name, recid: recid, column: col });
-                    if (eventData.isCancelled === true) continue;
+                    var edata = this.trigger({ phase: 'before', type: 'unselect', target: this.name, recid: recid, column: col });
+                    if (edata.isCancelled === true) continue;
                     // default action
                     s.splice(s.indexOf(col), 1);
                     $('#grid_'+ this.name +'_rec_'+ w2utils.escapeId(recid)).find(' > td[col='+ col +']').removeClass('w2ui-selected w2ui-inactive');
@@ -1462,7 +1555,7 @@
                     }
                 }
                 // event after
-                this.trigger($.extend(eventData, { phase: 'after' }));
+                this.trigger($.extend(edata, { phase: 'after' }));
             }
             // all selected?
             var areAllSelected = (this.records.length > 0 && sel.indexes.length == this.records.length),
@@ -1482,8 +1575,8 @@
             var time = (new Date()).getTime();
             if (this.multiSelect === false) return;
             // event before
-            var eventData = this.trigger({ phase: 'before', type: 'select', target: this.name, all: true });
-            if (eventData.isCancelled === true) return;
+            var edata = this.trigger({ phase: 'before', type: 'select', target: this.name, all: true });
+            if (edata.isCancelled === true) return;
             // default action
             var url  = (typeof this.url != 'object' ? this.url : this.url.get);
             var sel  = this.last.selection;
@@ -1529,15 +1622,15 @@
             this.addRange('selection');
             $('#grid_'+ this.name +'_check_all').prop('checked', true);
             // event after
-            this.trigger($.extend(eventData, { phase: 'after' }));
+            this.trigger($.extend(edata, { phase: 'after' }));
             return (new Date()).getTime() - time;
         },
 
         selectNone: function () {
             var time = (new Date()).getTime();
             // event before
-            var eventData = this.trigger({ phase: 'before', type: 'unselect', target: this.name, all: true });
-            if (eventData.isCancelled === true) return;
+            var edata = this.trigger({ phase: 'before', type: 'unselect', target: this.name, all: true });
+            if (edata.isCancelled === true) return;
             // default action
             var sel = this.last.selection;
             // remove selected class
@@ -1560,7 +1653,7 @@
             this.removeRange('selection');
             $('#grid_'+ this.name +'_check_all').prop('checked', false);
             // event after
-            this.trigger($.extend(eventData, { phase: 'after' }));
+            this.trigger($.extend(edata, { phase: 'after' }));
             return (new Date()).getTime() - time;
         },
 
@@ -1696,7 +1789,7 @@
                                     var tmp = {
                                         field    : search.field,
                                         type     : search.type,
-                                        operator : (search.type == 'text' ? 'begins' : 'is'),
+                                        operator : (search.operator != null ? search.operator : (search.type == 'text' ? 'begins' : 'is')),
                                         value    : value
                                     };
                                     if ($.trim(value) != '') searchData.push(tmp);
@@ -1707,7 +1800,7 @@
                                     var tmp = {
                                         field    : search.field,
                                         type     : search.type,
-                                        operator : 'between',
+                                        operator : (search.operator != null ? search.operator : 'between'),
                                         value    : [t[0], t[1]]
                                     };
                                     searchData.push(tmp);
@@ -1727,7 +1820,7 @@
                                         var tmp = {
                                             field    : search.field,
                                             type     : search.type,
-                                            operator : 'in',
+                                            operator : (search.operator != null ? search.operator : 'in'),
                                             value    : new_values
                                         };
                                         searchData.push(tmp);
@@ -1776,6 +1869,7 @@
                                     for (var i = 0; i < tmp.length; i++) val.push(tmp[i]);
                                 }
                             }
+                            if (search.operator != null) op = search.operator;
                             var tmp = {
                                 field    : search.field,
                                 type     : search.type,
@@ -1811,11 +1905,11 @@
                 }
             }
             // event before
-            var eventData = this.trigger({ phase: 'before', type: 'search', target: this.name, searchData: searchData,
+            var edata = this.trigger({ phase: 'before', type: 'search', target: this.name, searchData: searchData,
                     searchField: (field ? field : 'multi'), searchValue: (value ? value : 'multi') });
-            if (eventData.isCancelled === true) return;
+            if (edata.isCancelled === true) return;
             // default action
-            this.searchData  = eventData.searchData;
+            this.searchData  = edata.searchData;
             this.last.field  = last_field;
             this.last.search = last_search;
             this.last.multi  = last_multi;
@@ -1836,7 +1930,7 @@
                 this.refresh();
             }
             // event after
-            this.trigger($.extend(eventData, { phase: 'after' }));
+            this.trigger($.extend(edata, { phase: 'after' }));
         },
 
         searchOpen: function () {
@@ -1882,10 +1976,10 @@
                 hasHiddenSearches = true;
             }
             // event before
-            var eventData = this.trigger({ phase: 'before', type: 'search', target: this.name, searchData: searchData });
-            if (eventData.isCancelled === true) return;
+            var edata = this.trigger({ phase: 'before', type: 'search', target: this.name, searchData: searchData });
+            if (edata.isCancelled === true) return;
             // default action
-            this.searchData  = eventData.searchData;
+            this.searchData  = edata.searchData;
             this.last.search = '';
             this.last.logic  = (hasHiddenSearches ? 'AND' : 'OR');
             // --- do not reset to All Fields (I think)
@@ -1919,7 +2013,7 @@
             // apply search
             if (!noRefresh) this.reload();
             // event after
-            this.trigger($.extend(eventData, { phase: 'after' }));
+            this.trigger($.extend(edata, { phase: 'after' }));
         },
 
         searchShowFields: function () {
@@ -1935,7 +2029,7 @@
                     if (this.searches[s].hidden === true || this.searches[s].simple === false) continue;
                 }
                 html += '<tr '+ (w2utils.isIOS ? 'onTouchStart' : 'onClick') +'="w2ui[\''+ this.name +'\'].initAllField(\''+ search.field +'\');'+
-                        '      event.stopPropagation(); $(\'#grid_'+ this.name +'_search_all\').w2overlay({ name: \''+ this.name +'-searchFields\' });">'+
+                        '      event.stopPropagation(); jQuery(\'#grid_'+ this.name +'_search_all\').w2overlay({ name: \''+ this.name +'-searchFields\' });">'+
                         '    <td><input type="radio" tabIndex="-1" '+ (search.field == this.last.field ? 'checked="checked"' : '') +'/></td>'+
                         '    <td>'+ search.caption +'</td>'+
                         '</tr>';
@@ -2027,7 +2121,7 @@
             }
             // default action
             this.clear(true);
-            this.request('get-records', {}, url, callBack);
+            this.request('get', {}, url, callBack);
         },
 
         reload: function (callBack) {
@@ -2075,11 +2169,11 @@
             $.extend(params, this.postData);
             $.extend(params, add_params);
             // event before
-            if (cmd == 'get-records') {
-                var eventData = this.trigger({ phase: 'before', type: 'request', target: this.name, url: url, postData: params });
-                if (eventData.isCancelled === true) { if (typeof callBack == 'function') callBack({ status: 'error', message: 'Request aborted.' }); return; }
+            if (cmd == 'get') {
+                var edata = this.trigger({ phase: 'before', type: 'request', target: this.name, url: url, postData: params });
+                if (edata.isCancelled === true) { if (typeof callBack == 'function') callBack({ status: 'error', message: 'Request aborted.' }); return; }
             } else {
-                var eventData = { url: url, postData: params };
+                var edata = { url: url, postData: params };
             }
             // call server to get data
             var obj = this;
@@ -2095,9 +2189,9 @@
             }
             if (this.last.xhr) try { this.last.xhr.abort(); } catch (e) {}
             // URL
-            url = (typeof eventData.url != 'object' ? eventData.url : eventData.url.get);
-            if (params.cmd == 'save-records' && typeof eventData.url == 'object')   url = eventData.url.save;
-            if (params.cmd == 'delete-records' && typeof eventData.url == 'object') url = eventData.url.remove;
+            url = (typeof edata.url != 'object' ? edata.url : edata.url.get);
+            if (params.cmd == 'save' && typeof edata.url == 'object')   url = edata.url.save;
+            if (params.cmd == 'delete' && typeof edata.url == 'object') url = edata.url.remove;
             // process url with routeData
             if (!$.isEmptyObject(obj.routeData)) {
                 var info  = w2utils.parseRoute(url);
@@ -2112,25 +2206,25 @@
             var ajaxOptions = {
                 type     : 'POST',
                 url      : url,
-                data     : eventData.postData,
+                data     : edata.postData,
                 dataType : 'text'  // expected data type from server
             };
             if (w2utils.settings.dataType == 'HTTP') {
                 ajaxOptions.data = (typeof ajaxOptions.data == 'object' ? String($.param(ajaxOptions.data, false)).replace(/%5B/g, '[').replace(/%5D/g, ']') : ajaxOptions.data);
             }
             if (w2utils.settings.dataType == 'HTTPJSON') {
-                ajaxOptions.data = { data: JSON.stringify(ajaxOptions.data) };
+                ajaxOptions.data = { request: JSON.stringify(ajaxOptions.data) };
             }
             if (w2utils.settings.dataType == 'RESTFULL') {
                 ajaxOptions.type = 'GET';
-                if (params.cmd == 'save-records')   ajaxOptions.type = 'PUT';  // so far it is always update
-                if (params.cmd == 'delete-records') ajaxOptions.type = 'DELETE';
+                if (params.cmd == 'save')   ajaxOptions.type = 'PUT';  // so far it is always update
+                if (params.cmd == 'delete') ajaxOptions.type = 'DELETE';
                 ajaxOptions.data = (typeof ajaxOptions.data == 'object' ? String($.param(ajaxOptions.data, false)).replace(/%5B/g, '[').replace(/%5D/g, ']') : ajaxOptions.data);
             }
             if (w2utils.settings.dataType == 'RESTFULLJSON') {
                 ajaxOptions.type = 'GET';
-                if (params.cmd == 'save-records')   ajaxOptions.type = 'PUT';  // so far it is always update
-                if (params.cmd == 'delete-records') ajaxOptions.type = 'DELETE';
+                if (params.cmd == 'save')   ajaxOptions.type = 'PUT';  // so far it is always update
+                if (params.cmd == 'delete') ajaxOptions.type = 'DELETE';
                 ajaxOptions.data        = JSON.stringify(ajaxOptions.data);
                 ajaxOptions.contentType = 'application/json';
             }
@@ -2150,8 +2244,8 @@
                 .fail(function (xhr, status, error) {
                     // trigger event
                     var errorObj = { status: status, error: error, rawResponseText: xhr.responseText };
-                    var eventData2 = obj.trigger({ phase: 'before', type: 'error', error: errorObj, xhr: xhr });
-                    if (eventData2.isCancelled === true) return;
+                    var edata2 = obj.trigger({ phase: 'before', type: 'error', error: errorObj, xhr: xhr });
+                    if (edata2.isCancelled === true) return;
                     // default behavior
                     if (status != 'abort') { // it can be aborted by the grid itself
                         var data;
@@ -2163,11 +2257,11 @@
                         obj.requestComplete('error', cmd, callBack);
                     }
                     // event after
-                    obj.trigger($.extend(eventData2, { phase: 'after' }));
+                    obj.trigger($.extend(edata2, { phase: 'after' }));
                 });
-            if (cmd == 'get-records') {
+            if (cmd == 'get') {
                 // event after
-                this.trigger($.extend(eventData, { phase: 'after' }));
+                this.trigger($.extend(edata, { phase: 'after' }));
             }
         },
 
@@ -2182,10 +2276,10 @@
 
             // event before
             var event_name = 'load';
-            if (this.last.xhr_cmd == 'save-records') event_name   = 'save';
-            if (this.last.xhr_cmd == 'delete-records') event_name = 'delete';
-            var eventData = this.trigger({ phase: 'before', target: this.name, type: event_name, xhr: this.last.xhr, status: status });
-            if (eventData.isCancelled === true) {
+            if (this.last.xhr_cmd == 'save') event_name   = 'save';
+            if (this.last.xhr_cmd == 'delete') event_name = 'delete';
+            var edata = this.trigger({ phase: 'before', target: this.name, type: event_name, xhr: this.last.xhr, status: status });
+            if (edata.isCancelled === true) {
                 if (typeof callBack == 'function') callBack({ status: 'error', message: 'Request aborted.' });
                 return;
             }
@@ -2226,7 +2320,7 @@
                     if (data['status'] == 'error') {
                         obj.error(data['message']);
                     } else {
-                        if (cmd == 'get-records') {
+                        if (cmd == 'get') {
                             if (this.last.xhr_offset == 0) {
                                 this.records = [];
                                 this.summary = [];
@@ -2253,7 +2347,7 @@
                                 }
                             }
                         }
-                        if (cmd == 'delete-records') {
+                        if (cmd == 'delete') {
                             this.reset(); // unselect old selections
                             this.reload();
                             return;
@@ -2278,7 +2372,7 @@
             // call back
             if (typeof callBack == 'function') callBack(data); // need to be befor event:after
             // after event
-            this.trigger($.extend(eventData, { phase: 'after' }));
+            this.trigger($.extend(edata, { phase: 'after' }));
             // do not refresh if loading on infinite scroll
             if (this.last.xhr_offset == 0) {
                 this.refresh();
@@ -2291,14 +2385,14 @@
         error: function (msg) {
             var obj = this;
             // let the management of the error outside of the grid
-            var eventData = this.trigger({ target: this.name, type: 'error', message: msg , xhr: this.last.xhr });
-            if (eventData.isCancelled === true) {
+            var edata = this.trigger({ target: this.name, type: 'error', message: msg , xhr: this.last.xhr });
+            if (edata.isCancelled === true) {
                 if (typeof callBack == 'function') callBack({ status: 'error', message: 'Request aborted.' });
                 return;
             }
             w2alert(msg, w2utils.lang('Error'));
             // event after
-            this.trigger($.extend(eventData, { phase: 'after' }));
+            this.trigger($.extend(edata, { phase: 'after' }));
         },
 
         getChanges: function () {
@@ -2341,24 +2435,24 @@
             var obj = this;
             var changes = this.getChanges();
             // event before
-            var eventData = this.trigger({ phase: 'before', target: this.name, type: 'save', changes: changes });
-            if (eventData.isCancelled === true) return;
+            var edata = this.trigger({ phase: 'before', target: this.name, type: 'save', changes: changes });
+            if (edata.isCancelled === true) return;
             var url = (typeof this.url != 'object' ? this.url : this.url.save);
             if (url) {
-                this.request('save-records', { 'changes' : eventData.changes }, null,
+                this.request('save', { 'changes' : edata.changes }, null,
                     function (data) {
                         if (data.status !== 'error') {
                             // only merge changes, if save was successful
                             obj.mergeChanges();
                         }
                         // event after
-                        obj.trigger($.extend(eventData, { phase: 'after' }));
+                        obj.trigger($.extend(edata, { phase: 'after' }));
                     }
                 );
             } else {
                 this.mergeChanges();
                 // event after
-                this.trigger($.extend(eventData, { phase: 'after' }));
+                this.trigger($.extend(edata, { phase: 'after' }));
             }
         },
 
@@ -2377,10 +2471,10 @@
                 return;
             }
             // event before
-            var eventData = obj.trigger({ phase: 'before', type: 'editField', target: obj.name, recid: recid, column: column, value: value,
+            var edata = obj.trigger({ phase: 'before', type: 'editField', target: obj.name, recid: recid, column: column, value: value,
                 index: index, originalEvent: event });
-            if (eventData.isCancelled === true) return;
-            value = eventData.value;
+            if (edata.isCancelled === true) return;
+            value = edata.value;
             // default behaviour
             this.selectNone();
             this.select({ recid: recid, column: column });
@@ -2409,7 +2503,7 @@
             var val = (rec.w2ui && rec.w2ui.changes && rec.w2ui.changes[col.field] != null ? w2utils.stripTags(rec.w2ui.changes[col.field]) : w2utils.stripTags(rec[col.field]));
             if (val == null) val = '';
             var old_value = (typeof val != 'object' ? val : '');
-            if (eventData.old_value != null) old_value = eventData.old_value;
+            if (edata.old_value != null) old_value = edata.old_value;
             if (value != null) val = value;
             var addStyle = (col.style != null ? col.style + ';' : '');
             if (typeof col.render == 'string' && ['number', 'int', 'float', 'money', 'percent', 'size'].indexOf(col.render.split(':')[0]) != -1) {
@@ -2470,7 +2564,7 @@
                         '    field="'+ col.field +'" recid="'+ recid +'" column="'+ column +'" class="w2ui-input"'+ edit.inTag +
                         '/>' + edit.outTag);
                 // issue #499
-                if (typeof val == 'number') {
+                if (edit.type == 'number') {
                     val = w2utils.formatNumber(val);
                 }
                 if (edit.type == 'date') {
@@ -2531,7 +2625,9 @@
                                 event.preventDefault();
                                 break;
                             case 37:
-                                if (w2utils.getCursorPosition(el) == 0) event.preventDefault();
+                                if (w2utils.getCursorPosition(el) == 0) {
+                                    event.preventDefault();
+                                }
                                 break;
                             case 39:
                                 if (w2utils.getCursorPosition(el) == val.length) {
@@ -2617,32 +2713,37 @@
                     });
                 // focus and select
                 if (edit.type == 'div') {
-                    var tmp = el.find('div.w2ui-input').focus();
-                    clearTimeout(obj.last.kbd_timer); // keep focus
-                    if (value != null) {
-                        // set cursor to the end
-                        w2utils.setCursorPosition(tmp[0], $(tmp).text().length);
-                    } else {
-                        // select entire text
-                        w2utils.setCursorPosition(tmp[0], 0, $(tmp).text().length);
+                    var tmp = el.find('div.w2ui-input');
+                    if (tmp.length > 0) {
+                        tmp.focus();
+                        clearTimeout(obj.last.kbd_timer); // keep focus
+                        if (value != null) {
+                            // set cursor to the end
+                            w2utils.setCursorPosition(tmp[0], $(tmp).text().length);
+                        } else {
+                            // select entire text
+                            w2utils.setCursorPosition(tmp[0], 0, $(tmp).text().length);
+                        }
+                        expand.call(el.find('div.w2ui-input')[0], null);
                     }
-                    expand.call(el.find('div.w2ui-input')[0], null);
                 } else {
                     var tmp = el.find('input, select');
-                    tmp[0].focus();
-                    clearTimeout(obj.last.kbd_timer); // keep focus
-                    if (value != null) {
-                        // set cursor to the end
-                        tmp[0].setSelectionRange(tmp.val().length, tmp.val().length);
-                    } else {
-                        if (tmp[0].select) tmp[0].select();
+                    if (tmp.length > 0) {
+                        tmp[0].focus();
+                        clearTimeout(obj.last.kbd_timer); // keep focus
+                        if (value != null) {
+                            // set cursor to the end
+                            tmp[0].setSelectionRange(tmp.val().length, tmp.val().length);
+                        } else {
+                            if (tmp[0].select) tmp[0].select();
+                        }
+                        expand.call(el.find('input, select')[0], null);
                     }
-                    expand.call(el.find('input, select')[0], null);
                 }
-                if (tmp[0]) tmp[0].resize = expand;
+                if (tmp.length > 0) tmp[0].resize = expand;
                 // event after
-                obj.trigger($.extend(eventData, { phase: 'after', input: el.find('input, select, div.w2ui-input') }));
-            }, 1);
+                obj.trigger($.extend(edata, { phase: 'after', input: el.find('input, select, div.w2ui-input') }));
+            }, 5); // needs to be 5-10
             return;
 
             function expand(event) {
@@ -2675,7 +2776,6 @@
             var tr      = $('#grid_'+ this.name + (col.frozen === true ? '_frec_' : '_rec_') + w2utils.escapeId(rec.recid));
             var new_val = (el.tagName && el.tagName.toUpperCase() == 'DIV' ? $(el).text() : el.value);
             var old_val = this.parseField(rec, col.field);
-            if ($(event.target).data('old_value') != null) old_val = $(event.target).data('old_value');
             var tmp = $(el).data('w2field');
             if (tmp) {
                 if (tmp.type == 'list') new_val = $(el).data('selected');
@@ -2687,37 +2787,38 @@
                 new_val = el.checked;
             }
             // change/restore event
-            var eventData = {
+            var edata = {
                 phase: 'before', type: 'change', target: this.name, input_id: el.id, recid: rec.recid, index: index, column: column,
                 originalEvent: (event.originalEvent ? event.originalEvent : event),
                 value_new: new_val,
                 value_previous: (rec.w2ui && rec.w2ui.changes && rec.w2ui.changes.hasOwnProperty(col.field) ? rec.w2ui.changes[col.field]: old_val),
                 value_original: old_val
             };
+            if ($(event.target).data('old_value') != null) edata.value_previous = $(event.target).data('old_value');
             // if (old_val == null) old_val = ''; -- do not uncomment, error otherwise
             while (true) {
-                new_val = eventData.value_new;
+                new_val = edata.value_new;
                 if ((typeof new_val != 'object' && String(old_val) != String(new_val)) ||
                     (typeof new_val == 'object' && new_val.id != old_val && (typeof old_val != 'object' || old_val == null || new_val.id != old_val.id))) {
                     // change event
-                    eventData = this.trigger($.extend(eventData, { type: 'change', phase: 'before' }));
-                    if (eventData.isCancelled !== true) {
-                        if (new_val !== eventData.value_new) {
+                    edata = this.trigger($.extend(edata, { type: 'change', phase: 'before' }));
+                    if (edata.isCancelled !== true) {
+                        if (new_val !== edata.value_new) {
                             // re-evaluate the type of change to be made
                             continue;
                         }
                         // default action
                         rec.w2ui = rec.w2ui || {};
                         rec.w2ui.changes = rec.w2ui.changes || {};
-                        rec.w2ui.changes[col.field] = eventData.value_new;
+                        rec.w2ui.changes[col.field] = edata.value_new;
                         // event after
-                        this.trigger($.extend(eventData, { phase: 'after' }));
+                        this.trigger($.extend(edata, { phase: 'after' }));
                     }
                 } else {
                     // restore event
-                    eventData = this.trigger($.extend(eventData, { type: 'restore', phase: 'before' }));
-                    if (eventData.isCancelled !== true) {
-                        if (new_val !== eventData.value_new) {
+                    edata = this.trigger($.extend(edata, { type: 'restore', phase: 'before' }));
+                    if (edata.isCancelled !== true) {
+                        if (new_val !== edata.value_new) {
                             // re-evaluate the type of change to be made
                             continue;
                         }
@@ -2725,7 +2826,7 @@
                         if (rec.w2ui && rec.w2ui.changes) delete rec.w2ui.changes[col.field];
                         if (rec.w2ui && $.isEmptyObject(rec.w2ui.changes)) delete rec.w2ui.changes;
                         // event after
-                        this.trigger($.extend(eventData, { phase: 'after' }));
+                        this.trigger($.extend(edata, { phase: 'after' }));
                     }
                 }
                 break;
@@ -2753,9 +2854,9 @@
             var time = (new Date()).getTime();
             var obj = this;
             // event before
-            var eventData = this.trigger({ phase: 'before', target: this.name, type: 'delete', force: force });
-            if (eventData.isCancelled === true) return;
-            force = eventData.force;
+            var edata = this.trigger({ phase: 'before', target: this.name, type: 'delete', force: force });
+            if (edata.isCancelled === true) return;
+            force = edata.force;
             // default action
             var recs = this.getSelection();
             if (recs.length == 0) return;
@@ -2773,7 +2874,7 @@
             // call delete script
             var url = (typeof this.url != 'object' ? this.url : this.url.remove);
             if (url) {
-                this.request('delete-records');
+                this.request('delete');
             } else {
                 if (typeof recs[0] != 'object') {
                     this.selectNone();
@@ -2797,7 +2898,7 @@
                 }
             }
             // event after
-            this.trigger($.extend(eventData, { phase: 'after' }));
+            this.trigger($.extend(edata, { phase: 'after' }));
         },
 
         click: function (recid, event) {
@@ -2830,8 +2931,8 @@
                 if ($(tmp).attr('col') != null) column = parseInt($(tmp).attr('col'));
             }
             // event before
-            var eventData = this.trigger({ phase: 'before', target: this.name, type: 'click', recid: recid, column: column, originalEvent: event });
-            if (eventData.isCancelled === true) return;
+            var edata = this.trigger({ phase: 'before', target: this.name, type: 'click', recid: recid, column: column, originalEvent: event });
+            if (edata.isCancelled === true) return;
             // default action
             var obj = this;
             var sel = this.getSelection();
@@ -2899,18 +3000,18 @@
             this.status();
             obj.initResize();
             // event after
-            this.trigger($.extend(eventData, { phase: 'after' }));
+            this.trigger($.extend(edata, { phase: 'after' }));
         },
 
         columnClick: function (field, event) {
             // event before
-            var eventData = this.trigger({ phase: 'before', type: 'columnClick', target: this.name, field: field, originalEvent: event });
-            if (eventData.isCancelled === true) return;
+            var edata = this.trigger({ phase: 'before', type: 'columnClick', target: this.name, field: field, originalEvent: event });
+            if (edata.isCancelled === true) return;
             // default behaviour
             if (this.selectType == 'row') {
                 var column = this.getColumn(field);
                 if (column && column.sortable) this.sort(field, null, (event && (event.ctrlKey || event.metaKey) ? true : false) );
-                if (eventData.field == 'line-number') {
+                if (edata.field == 'line-number') {
                     if (this.getSelection().length >= this.records.length) {
                         this.selectNone();
                     } else {
@@ -2919,7 +3020,7 @@
                 }
             } else {
                 // select entire column
-                if (eventData.field == 'line-number') {
+                if (edata.field == 'line-number') {
                     if (this.getSelection().length >= this.records.length) {
                         this.selectNone();
                     } else {
@@ -2930,7 +3031,7 @@
                         this.selectNone();
                     }
                     var tmp     = this.getSelection();
-                    var column  = this.getColumn(eventData.field, true);
+                    var column  = this.getColumn(edata.field, true);
                     var sel     = [];
                     var cols    = [];
                     // check if there was a selection before
@@ -2953,14 +3054,22 @@
                 }
             }
             // event after
-            this.trigger($.extend(eventData, { phase: 'after' }));
+            this.trigger($.extend(edata, { phase: 'after' }));
+        },
+
+        columnDblClick: function (field, event) {
+            // event before
+            var edata = this.trigger({ phase: 'before', type: 'columnDblClick', target: this.name, field: field, originalEvent: event });
+            if (edata.isCancelled === true) return;
+            // event after
+            this.trigger($.extend(edata, { phase: 'after' }));
         },
 
         focus: function (event) {
             var obj = this;
             // event before
-            var eventData = this.trigger({ phase: 'before', type: 'focus', target: this.name, originalEvent: event });
-            if (eventData.isCancelled === true) return false;
+            var edata = this.trigger({ phase: 'before', type: 'focus', target: this.name, originalEvent: event });
+            if (edata.isCancelled === true) return false;
             // default behaviour
             this.hasFocus = true;
             $(this.box).find('.w2ui-inactive').removeClass('w2ui-inactive');
@@ -2969,19 +3078,19 @@
                 if (!$input.is(':focus')) $input.focus();
             }, 10);
             // event after
-            this.trigger($.extend(eventData, { phase: 'after' }));
+            this.trigger($.extend(edata, { phase: 'after' }));
         },
 
         blur: function (event) {
             // event before
-            var eventData = this.trigger({ phase: 'before', type: 'blur', target: this.name, originalEvent: event });
-            if (eventData.isCancelled === true) return false;
+            var edata = this.trigger({ phase: 'before', type: 'blur', target: this.name, originalEvent: event });
+            if (edata.isCancelled === true) return false;
             // default behaviour
             this.hasFocus = false;
             $(this.box).find('.w2ui-selected').addClass('w2ui-inactive');
             $(this.box).find('.w2ui-selection').addClass('w2ui-inactive');
             // event after
-            this.trigger($.extend(eventData, { phase: 'after' }));
+            this.trigger($.extend(edata, { phase: 'after' }));
         },
 
         keydown: function (event) {
@@ -2990,8 +3099,8 @@
             var url = (typeof this.url != 'object' ? this.url : this.url.get);
             if (obj.keyboard !== true) return;
             // trigger event
-            var eventData = obj.trigger({ phase: 'before', type: 'keydown', target: obj.name, originalEvent: event });
-            if (eventData.isCancelled === true) return;
+            var edata = obj.trigger({ phase: 'before', type: 'keydown', target: obj.name, originalEvent: event });
+            if (edata.isCancelled === true) return;
             // default behavior
             var empty   = false;
             var records = $('#grid_'+ obj.name +'_records');
@@ -3289,20 +3398,37 @@
                 case 91: // cmd key
                     // SLOW: 10k records take 7.0
                     if (empty) break;
-                    obj.last.copy_event = obj.copy(false);
-                    $('#grid_'+ obj.name + '_focus').val(obj.last.copy_event.text).select();
+                    // in Safari need to copy to buffer on cmd or ctrl key (otherwise does not work)
+                    if (obj.last.isSafari) {
+                        obj.last.copy_event = obj.copy(false);
+                        $('#grid_'+ obj.name + '_focus').val(obj.last.copy_event.text).select();
+                    }
                     break;
 
                 case 67: // - c
                     // this fill trigger event.onComplete
                     if (event.metaKey || event.ctrlKey) {
-                        obj.copy(obj.last.copy_event);
+                        if (obj.last.isSafari) {
+                            obj.copy(obj.last.copy_event);
+                        } else {
+                            obj.last.copy_event = obj.copy(false);
+                            $('#grid_'+ obj.name + '_focus').val(obj.last.copy_event.text).select();
+                            obj.copy(obj.last.copy_event);
+                        }
                     }
                     break;
 
                 case 88: // x - cut
                     if (empty) break;
                     if (event.ctrlKey || event.metaKey) {
+                        if (obj.last.isSafari) {
+                            obj.copy(obj.last.copy_event);
+                        } else {
+                            obj.last.copy_event = obj.copy(false);
+                            $('#grid_'+ obj.name + '_focus').val(obj.last.copy_event.text).select();
+                            obj.copy(obj.last.copy_event);
+                        }
+                        // clear
                         setTimeout(function () { obj["delete"](true); }, 100);
                     }
                     break;
@@ -3324,7 +3450,7 @@
                 if (event.preventDefault) event.preventDefault();
             }
             // event after
-            obj.trigger($.extend(eventData, { phase: 'after' }));
+            obj.trigger($.extend(edata, { phase: 'after' }));
 
             function selectTopRecord() {
                 var ind = Math.floor(records[0].scrollTop / obj.recordHeight) + 1;
@@ -3449,8 +3575,8 @@
             }
             var rec = this.get(recid);
             // event before
-            var eventData = this.trigger({ phase: 'before', target: this.name, type: 'dblClick', recid: recid, column: column, originalEvent: event });
-            if (eventData.isCancelled === true) return;
+            var edata = this.trigger({ phase: 'before', target: this.name, type: 'dblClick', recid: recid, column: column, originalEvent: event });
+            if (edata.isCancelled === true) return;
             // default action
             this.selectNone();
             var col = this.columns[column];
@@ -3461,7 +3587,7 @@
                 if (this.show.expandColumn || (rec.w2ui && Array.isArray(rec.w2ui.children))) this.toggle(recid);
             }
             // event after
-            this.trigger($.extend(eventData, { phase: 'after' }));
+            this.trigger($.extend(edata, { phase: 'after' }));
         },
 
         contextMenu: function (recid, column, event) {
@@ -3489,8 +3615,8 @@
                 if (!selected && column != null) obj.columnClick(this.columns[column].field, event);
             }
             // event before
-            var eventData = obj.trigger({ phase: 'before', type: 'contextMenu', target: obj.name, originalEvent: event, recid: recid, column: column });
-            if (eventData.isCancelled === true) return;
+            var edata = obj.trigger({ phase: 'before', type: 'contextMenu', target: obj.name, originalEvent: event, recid: recid, column: column });
+            if (edata.isCancelled === true) return;
             // default action
             if (obj.menu.length > 0) {
                 $(obj.box).find(event.target)
@@ -3506,19 +3632,19 @@
             // cancel event
             if (event.preventDefault) event.preventDefault();
             // event after
-            obj.trigger($.extend(eventData, { phase: 'after' }));
+            obj.trigger($.extend(edata, { phase: 'after' }));
         },
 
         menuClick: function (recid, index, event) {
             var obj = this;
             // event before
-            var eventData = obj.trigger({ phase: 'before', type: 'menuClick', target: obj.name, originalEvent: event,
+            var edata = obj.trigger({ phase: 'before', type: 'menuClick', target: obj.name, originalEvent: event,
                 recid: recid, menuIndex: index, menuItem: obj.menu[index] });
-            if (eventData.isCancelled === true) return;
+            if (edata.isCancelled === true) return;
             // default action
             // -- empty
             // event after
-            obj.trigger($.extend(eventData, { phase: 'after' }));
+            obj.trigger($.extend(edata, { phase: 'after' }));
         },
 
         toggle: function (recid) {
@@ -3645,8 +3771,8 @@
 
         sort: function (field, direction, multiField) { // if no params - clears sort
             // event before
-            var eventData = this.trigger({ phase: 'before', type: 'sort', target: this.name, field: field, direction: direction, multiField: multiField });
-            if (eventData.isCancelled === true) return;
+            var edata = this.trigger({ phase: 'before', type: 'sort', target: this.name, field: field, direction: direction, multiField: multiField });
+            if (edata.isCancelled === true) return;
             // check if needed to quit
             if (field != null) {
                 // default action
@@ -3680,11 +3806,11 @@
                 this.localSort();
                 if (this.searchData.length > 0) this.localSearch(true);
                 // event after
-                this.trigger($.extend(eventData, { phase: 'after' }));
+                this.trigger($.extend(edata, { phase: 'after' }));
                 this.refresh();
             } else {
                 // event after
-                this.trigger($.extend(eventData, { phase: 'after' }));
+                this.trigger($.extend(edata, { phase: 'after' }));
                 this.last.xhr_offset = 0;
                 this.reload();
             }
@@ -3747,18 +3873,18 @@
             // if called without params
             if (flag == null) {
                 // before event
-                var eventData = this.trigger({ phase: 'before', type: 'copy', target: this.name, text: text });
-                if (eventData.isCancelled === true) return '';
-                text = eventData.text;
+                var edata = this.trigger({ phase: 'before', type: 'copy', target: this.name, text: text });
+                if (edata.isCancelled === true) return '';
+                text = edata.text;
                 // event after
-                this.trigger($.extend(eventData, { phase: 'after' }));
+                this.trigger($.extend(edata, { phase: 'after' }));
                 return text;
             } else if (flag === false) { // only before event
                 // before event
-                var eventData = this.trigger({ phase: 'before', type: 'copy', target: this.name, text: text });
-                if (eventData.isCancelled === true) return '';
-                text = eventData.text;
-                return eventData;
+                var edata = this.trigger({ phase: 'before', type: 'copy', target: this.name, text: text });
+                if (edata.isCancelled === true) return '';
+                text = edata.text;
+                return edata;
             }
         },
 
@@ -3767,14 +3893,14 @@
             var ind = this.get(sel[0].recid, true);
             var col = sel[0].column;
             // before event
-            var eventData = this.trigger({ phase: 'before', type: 'paste', target: this.name, text: text, index: ind, column: col });
-            if (eventData.isCancelled === true) return;
-            text = eventData.text;
+            var edata = this.trigger({ phase: 'before', type: 'paste', target: this.name, text: text, index: ind, column: col });
+            if (edata.isCancelled === true) return;
+            text = edata.text;
             // default action
             if (this.selectType == 'row' || sel.length == 0) {
                 console.log('ERROR: You can paste only if grid.selectType = \'cell\' and when at least one cell selected.');
                 // event after
-                this.trigger($.extend(eventData, { phase: 'after' }));
+                this.trigger($.extend(edata, { phase: 'after' }));
                 return;
             }
             var newSel = [];
@@ -3801,7 +3927,7 @@
             this.select.apply(this, newSel);
             this.refresh();
             // event after
-            this.trigger($.extend(eventData, { phase: 'after' }));
+            this.trigger($.extend(edata, { phase: 'after' }));
         },
 
         // ==================================================
@@ -3817,14 +3943,14 @@
                 .css('width', $(this.box).width())
                 .css('height', $(this.box).height());
             // event before
-            var eventData = this.trigger({ phase: 'before', type: 'resize', target: this.name });
-            if (eventData.isCancelled === true) return;
+            var edata = this.trigger({ phase: 'before', type: 'resize', target: this.name });
+            if (edata.isCancelled === true) return;
             // resize
             obj.resizeBoxes();
             obj.resizeRecords();
             if (obj.toolbar) obj.toolbar.resize();
             // event after
-            this.trigger($.extend(eventData, { phase: 'after' }));
+            this.trigger($.extend(edata, { phase: 'after' }));
             return (new Date()).getTime() - time;
         },
 
@@ -3834,12 +3960,13 @@
             if (cells == null) {
                 for (var index = this.last.range_start - 1; index <= this.last.range_end - 1; index++) {
                     if (index < 0) continue;
-                    var rec = this.records[index];
+                    var rec = this.records[index] || {};
+                    if (!rec.w2ui) rec.w2ui = {};
                     for (var column = 0; column < this.columns.length; column++) {
                         var cell = $(this.box).find('#grid_'+ this.name + '_data_'+ index +'_'+ column);
                         cell.replaceWith(this.getCellHTML(index, column, false));
                         // assign style
-                        if (rec.w2ui && rec.w2ui.style != null && !$.isEmptyObject(rec.w2ui.style)) {
+                        if (rec.w2ui.style != null && !$.isEmptyObject(rec.w2ui.style)) {
                             if (typeof rec.w2ui.style == 'string') {
                                 $(this.box).find('#grid_'+ this.name +'_rec_'+ w2utils.escapeId(rec.recid)).attr('style', rec.w2ui.style);
                             }
@@ -3860,11 +3987,12 @@
                         console.log('ERROR: Wrong argument for grid.update(cells), cells should be [{ index: X, column: Y }, ...]');
                         continue;
                     }
-                    var rec  = this.records[index];
+                    var rec  = this.records[index] || {};
                     var cell = $(this.box).find('#grid_'+ this.name + '_data_'+ index +'_'+ column);
+                    if (!rec.w2ui) rec.w2ui = {};
                     cell.replaceWith(this.getCellHTML(index, column, false));
                     // assign style
-                    if (rec.w2ui && rec.w2ui.style != null && !$.isEmptyObject(rec.w2ui.style)) {
+                    if (rec.w2ui.style != null && !$.isEmptyObject(rec.w2ui.style)) {
                         if (typeof rec.w2ui.style == 'string') {
                             $(this.box).find('#grid_'+ this.name +'_rec_'+ w2utils.escapeId(rec.recid)).attr('style', rec.w2ui.style);
                         }
@@ -3920,7 +4048,7 @@
                 $(tr1).replaceWith(rec_html[0]);
                 $(tr2).replaceWith(rec_html[1]);
                 // apply style to row if it was changed in render functions
-                var st = this.records[ind].w2ui.style;
+                var st = (this.records[ind].w2ui ? this.records[ind].w2ui.style : '');
                 if (typeof st == 'string') {
                     var tr1 = $(this.box).find('#grid_'+ this.name +'_frec_'+ w2utils.escapeId(recid));
                     var tr2 = $(this.box).find('#grid_'+ this.name +'_rec_'+ w2utils.escapeId(recid));
@@ -3947,8 +4075,8 @@
             this.toolbar.disable('w2ui-edit', 'w2ui-delete');
             if (!this.box) return;
             // event before
-            var eventData = this.trigger({ phase: 'before', target: this.name, type: 'refresh' });
-            if (eventData.isCancelled === true) return;
+            var edata = this.trigger({ phase: 'before', target: this.name, type: 'refresh' });
+            if (edata.isCancelled === true) return;
             // -- header
             if (this.show.header) {
                 $('#grid_'+ this.name +'_header').html(this.header +'&#160;').show();
@@ -4073,7 +4201,7 @@
                     for (var s = 0; s < obj.searchData.length; s++) {
                         var sdata = obj.searchData[s];
                         var fld = obj.getSearch(sdata.field);
-                        if (fld.hidden) continue;
+                        if (!fld || fld.hidden) continue;
                         if (str.indexOf(sdata.value) == -1) str.push(sdata.value);
                     }
                     if (str.length > 0) $(obj.box).find('.w2ui-grid-data > div').w2marker(str);
@@ -4084,7 +4212,7 @@
                 if (this.getChanges().length > 0) this.toolbar.enable('w2ui-save'); else this.toolbar.disable('w2ui-save');
             }
             // event after
-            this.trigger($.extend(eventData, { phase: 'after' }));
+            this.trigger($.extend(edata, { phase: 'after' }));
             obj.resize();
             obj.addRange('selection');
             setTimeout(function () { // allow to render first
@@ -4115,8 +4243,8 @@
             if (!this.box) return;
             var url = (typeof this.url != 'object' ? this.url : this.url.get);
             // event before
-            var eventData = this.trigger({ phase: 'before', target: this.name, type: 'render', box: box });
-            if (eventData.isCancelled === true) return;
+            var edata = this.trigger({ phase: 'before', target: this.name, type: 'render', box: box });
+            if (edata.isCancelled === true) return;
             // reset needed if grid existed
             this.reset(true);
             // --- default search field
@@ -4164,7 +4292,7 @@
             if (!this.last.state) this.last.state = this.stateSave(true); // initial default state
             this.stateRestore();
             if (url) this.refresh(); // show empty grid (need it) - should it be only for remote data source
-                        // if hidden searches - apply it
+            // if hidden searches - apply it
             var hasHiddenSearches = false;
             for (var i = 0; i < this.searches.length; i++) {
                 if (this.searches[i].hidden) { hasHiddenSearches = true; break; }
@@ -4181,6 +4309,7 @@
                     if (!obj.hasFocus) obj.focus();
                 })
                 .on('blur', function (event) {
+                    clearTimeout(obj.last.kbd_timer);
                     obj.last.kbd_timer = setTimeout(function () {
                         if (obj.hasFocus) { obj.blur(); }
                     }, 100); // need this timer to be 100 ms
@@ -4195,7 +4324,7 @@
             // init mouse events for mouse selection
             $(this.box).on('mousedown', mouseStart);
             // event after
-            this.trigger($.extend(eventData, { phase: 'after' }));
+            this.trigger($.extend(edata, { phase: 'after' }));
             // attach to resize event
             if ($('.w2ui-layout').length == 0) { // if there is layout, it will send a resize event
                 this.tmp_resize = function (event) { w2ui[obj.name].resize(); };
@@ -4254,13 +4383,13 @@
                     var target = event.target;
                     setTimeout(function () {
                         var $input = $(obj.box).find('#grid_'+ obj.name + '_focus');
+                        if (!$input.is(':focus')) $input.focus(); // keep focus
                         // move input next to cursor so screen does not jump
                         if (obj.last.move) {
                             $input.css({
                                 left: obj.last.move.focusX - $(obj.box).find('#grid_'+ obj.name +'_records').scrollLeft(),
                                 top : obj.last.move.focusY - $(obj.box).find('#grid_'+ obj.name +'_records').scrollTop()
                             });
-                            if (!$input.is(':focus')) $input.focus();
                         }
                         // if toolbar input is clicked
                         setTimeout(function () {
@@ -4457,8 +4586,8 @@
                     }
                     if (obj.reorderRows == true && obj.last.move.reorder) {
                         // event
-                        var eventData = obj.trigger({ phase: 'before', target: obj.name, type: 'reorderRow', recid: mv.from, moveAfter: mv.to });
-                        if (eventData.isCancelled === true) {
+                        var edata = obj.trigger({ phase: 'before', target: obj.name, type: 'reorderRow', recid: mv.from, moveAfter: mv.to });
+                        if (edata.isCancelled === true) {
                             $('#grid_'+ obj.name + '_ghost').remove();
                             obj.refresh();
                             return;
@@ -4479,7 +4608,7 @@
                         $('#grid_'+ obj.name + '_ghost').remove();
                         obj.refresh();
                         // event after
-                        obj.trigger($.extend(eventData, { phase: 'after' }));
+                        obj.trigger($.extend(edata, { phase: 'after' }));
                     }
                 }
                 delete obj.last.move;
@@ -4490,8 +4619,8 @@
 
         destroy: function () {
             // event before
-            var eventData = this.trigger({ phase: 'before', target: this.name, type: 'destroy' });
-            if (eventData.isCancelled === true) return;
+            var edata = this.trigger({ phase: 'before', target: this.name, type: 'destroy' });
+            if (edata.isCancelled === true) return;
             // remove events
             if (this.tmp_resize) $(window).off('resize', this.tmp_resize);
             // clean up
@@ -4504,7 +4633,7 @@
             }
             delete w2ui[this.name];
             // event after
-            this.trigger($.extend(eventData, { phase: 'after' }));
+            this.trigger($.extend(edata, { phase: 'after' }));
         },
 
         // ===========================================
@@ -4520,7 +4649,7 @@
                 '   <td style="width: 30px; text-align: center; padding-right: 3px; color: #888;">'+
                 '      <span class="w2ui-column-check w2ui-icon-'+ (!obj.show.lineNumbers ? 'empty' : 'check') +'"></span>'+
                 '   </td>'+
-                '   <td onclick="$(\'.w2ui-overlay\')[0].hide();">'+
+                '   <td onclick="jQuery(\'.w2ui-overlay\')[0].hide();">'+
                 '      <label>'+ w2utils.lang('Line #') +'</label>'+
                 '   </td>'+
                 '</tr>';
@@ -4537,7 +4666,7 @@
                     '   <td style="width: 30px; text-align: center; padding-right: 3px; color: #888;">'+
                     '      <span class="w2ui-column-check w2ui-icon-'+ (col.hidden ? 'empty' : 'check') +'"></span>'+
                     '   </td>'+
-                    '   <td onclick="$(\'.w2ui-overlay\')[0].hide();">'+
+                    '   <td onclick="jQuery(\'.w2ui-overlay\')[0].hide();">'+
                     '       <label>'+ w2utils.stripTags(tmp) +'</label>'+
                     '   </td>'+
                     '</tr>';
@@ -4552,7 +4681,7 @@
                         '        <input type="text" style="width: 45px" value="'+ this.offset +'" '+
                         '            onkeypress="if (event.keyCode == 13) { '+
                         '               w2ui[\''+ obj.name +'\'].skip(this.value); '+
-                        '               $(\'.w2ui-overlay\')[0].hide(); '+
+                        '               jQuery(\'.w2ui-overlay\')[0].hide(); '+
                         '            }"/> '+ w2utils.lang('Records')+
                         '    </div>'+
                         '</td></tr>';
@@ -4603,7 +4732,7 @@
                 _dragData.timeout = setTimeout(function(){
                     if ( !_dragData.pressed ) return;
 
-                    var eventData,
+                    var edata,
                         columns,
                         selectedCol,
                         origColumn,
@@ -4627,8 +4756,8 @@
                     //start event for drag start
                     _dragData.columnHead = origColumn = $( event.originalEvent.target ).parents( '.w2ui-head' );
                     origColumnNumber = parseInt( origColumn.attr( 'col' ), 10);
-                    eventData = obj.trigger({ type: 'columnDragStart', phase: 'before', originalEvent: event, origColumnNumber: origColumnNumber, target: origColumn[0] });
-                    if ( eventData.isCancelled === true ) return false;
+                    edata = obj.trigger({ type: 'columnDragStart', phase: 'before', originalEvent: event, origColumnNumber: origColumnNumber, target: origColumn[0] });
+                    if ( edata.isCancelled === true ) return false;
 
                     columns = _dragData.columns = $( obj.box ).find( '.w2ui-head:not(.w2ui-head-last)' );
 
@@ -4672,7 +4801,7 @@
                     }
 
                     //conclude event
-                    obj.trigger( $.extend( eventData, { phase: 'after' } ) );
+                    obj.trigger( $.extend( edata, { phase: 'after' } ) );
                 }, 150 );//end timeout wrapper
             }
 
@@ -4693,7 +4822,7 @@
             function dragColEnd ( event ) {
                 _dragData.pressed = false;
 
-                var eventData,
+                var edata,
                     target,
                     selected,
                     columnConfig,
@@ -4701,8 +4830,8 @@
                     ghosts = $( '.w2ui-grid-ghost' );
 
                 //start event for drag start
-                eventData = obj.trigger({ type: 'columnDragEnd', phase: 'before', originalEvent: event, target: _dragData.columnHead[0] });
-                if ( eventData.isCancelled === true ) return false;
+                edata = obj.trigger({ type: 'columnDragEnd', phase: 'before', originalEvent: event, target: _dragData.columnHead[0] });
+                if ( edata.isCancelled === true ) return false;
 
                 selected = obj.columns[ _dragData.originalPos ];
                 columnConfig = obj.columns;
@@ -4739,7 +4868,7 @@
                 obj.refresh();
 
                 //conclude event
-                obj.trigger( $.extend( eventData, { phase: 'after', targetColumnNumber: target - 1 } ) );
+                obj.trigger( $.extend( edata, { phase: 'after', targetColumnNumber: target - 1 } ) );
             }
 
             function markIntersection( intersection ){
@@ -4819,8 +4948,8 @@
         columnOnOff: function (event, field) {
             var $el = $(event.target).parents('tr').find('.w2ui-column-check');
             // event before
-            var eventData = this.trigger({ phase: 'before', target: this.name, type: 'columnOnOff', field: field, originalEvent: event });
-            if (eventData.isCancelled === true) return;
+            var edata = this.trigger({ phase: 'before', target: this.name, type: 'columnOnOff', field: field, originalEvent: event });
+            if (edata.isCancelled === true) return;
             // regular processing
             var obj = this;
             // collapse expanded rows
@@ -4857,7 +4986,7 @@
                 }, 150);
             }
             // event after
-            this.trigger($.extend(eventData, { phase: 'after' }));
+            this.trigger($.extend(edata, { phase: 'after' }));
         },
 
         initToolbar: function () {
@@ -4880,7 +5009,7 @@
                 if (this.show.toolbarReload || this.show.toolbarColumns) {
                     this.toolbar.items.push({ type: 'break', id: 'w2ui-break0' });
                 }
-                if (this.show.toolbarSearch) {
+                if (this.show.toolbarInput) {
                     var html =
                         '<div class="w2ui-toolbar-search">'+
                         '<table cellpadding="0" cellspacing="0"><tbody><tr>'+
@@ -4893,8 +5022,8 @@
                         '            onchange="'+
                         '                var grid = w2ui[\''+ this.name +'\']; '+
                         '                var val = this.value; '+
-                        '                var sel = $(this).data(\'selected\');'+
-                        '                var fld = $(this).data(\'w2field\'); '+
+                        '                var sel = jQuery(this).data(\'selected\');'+
+                        '                var fld = jQuery(this).data(\'w2field\'); '+
                         '                if (fld) val = fld.clean(val);'+
                         '                if (fld &amp;&amp; fld.type == \'list\' &amp;&amp; sel &amp;&amp; typeof sel.id == \'undefined\') {'+
                         '                   grid.searchReset();'+
@@ -4911,11 +5040,11 @@
                         '</tr></tbody></table>'+
                         '</div>';
                     this.toolbar.items.push({ type: 'html', id: 'w2ui-search', html: html });
-                    if (this.multiSearch && this.searches.length > 0) {
-                        this.toolbar.items.push($.extend(true, {}, this.buttons['search-go']));
-                    }
                 }
-                if (this.show.toolbarSearch && (this.show.toolbarAdd || this.show.toolbarEdit || this.show.toolbarDelete || this.show.toolbarSave)) {
+                if (this.show.toolbarSearch && this.multiSearch && this.searches.length > 0) {
+                    this.toolbar.items.push($.extend(true, {}, this.buttons['search-go']));
+                }
+                if ((this.show.toolbarSearch || this.show.toolbarInput) && (this.show.toolbarAdd || this.show.toolbarEdit || this.show.toolbarDelete || this.show.toolbarSave)) {
                     this.toolbar.items.push({ type: 'break', id: 'w2ui-break1' });
                 }
                 if (this.show.toolbarAdd) {
@@ -4941,15 +5070,15 @@
 
                 var obj = this;
                 this.toolbar.on('click', function (event) {
-                    var eventData = obj.trigger({ phase: 'before', type: 'toolbar', target: event.target, originalEvent: event });
-                    if (eventData.isCancelled === true) return;
+                    var edata = obj.trigger({ phase: 'before', type: 'toolbar', target: event.target, originalEvent: event });
+                    if (edata.isCancelled === true) return;
                     var id = event.target;
                     switch (id) {
                         case 'w2ui-reload':
-                            var eventData2 = obj.trigger({ phase: 'before', type: 'reload', target: obj.name });
-                            if (eventData2.isCancelled === true) return false;
+                            var edata2 = obj.trigger({ phase: 'before', type: 'reload', target: obj.name });
+                            if (edata2.isCancelled === true) return false;
                             obj.reload();
-                            obj.trigger($.extend(eventData2, { phase: 'after' }));
+                            obj.trigger($.extend(edata2, { phase: 'after' }));
                             break;
                         case 'w2ui-column-on-off':
                             obj.initColumnOnOff();
@@ -4975,16 +5104,16 @@
                             break;
                         case 'w2ui-add':
                             // events
-                            var eventData = obj.trigger({ phase: 'before', target: obj.name, type: 'add', recid: null });
-                            obj.trigger($.extend(eventData, { phase: 'after' }));
+                            var edata = obj.trigger({ phase: 'before', target: obj.name, type: 'add', recid: null });
+                            obj.trigger($.extend(edata, { phase: 'after' }));
                             break;
                         case 'w2ui-edit':
                             var sel     = obj.getSelection();
                             var recid     = null;
                             if (sel.length == 1) recid = sel[0];
                             // events
-                            var eventData = obj.trigger({ phase: 'before', target: obj.name, type: 'edit', recid: recid });
-                            obj.trigger($.extend(eventData, { phase: 'after' }));
+                            var edata = obj.trigger({ phase: 'before', target: obj.name, type: 'edit', recid: recid });
+                            obj.trigger($.extend(edata, { phase: 'after' }));
                             break;
                         case 'w2ui-delete':
                             obj["delete"]();
@@ -4994,7 +5123,7 @@
                             break;
                     }
                     // no default action
-                    obj.trigger($.extend(eventData, { phase: 'after' }));
+                    obj.trigger($.extend(edata, { phase: 'after' }));
                 });
             } else {
                 var pos1, pos2;
@@ -5046,15 +5175,15 @@
                         if (obj.columns[c].sizeOriginal == null) obj.columns[c].sizeOriginal = obj.columns[c].size;
                         obj.columns[c].size = obj.columns[c].sizeCalculated;
                     }
-                    var eventData = { phase: 'before', type: 'columnResize', target: obj.name, column: obj.last.tmp.col, field: obj.columns[obj.last.tmp.col].field };
-                    eventData = obj.trigger($.extend(eventData, { resizeBy: 0, originalEvent: event }));
+                    var edata = { phase: 'before', type: 'columnResize', target: obj.name, column: obj.last.tmp.col, field: obj.columns[obj.last.tmp.col].field };
+                    edata = obj.trigger($.extend(edata, { resizeBy: 0, originalEvent: event }));
                     // set move event
                     var mouseMove = function (event) {
                         if (obj.resizing != true) return;
                         if (!event) event = window.event;
                         // event before
-                        eventData = obj.trigger($.extend(eventData, { resizeBy: (event.screenX - obj.last.tmp.gx), originalEvent: event }));
-                        if (eventData.isCancelled === true) { eventData.isCancelled = false; return; }
+                        edata = obj.trigger($.extend(edata, { resizeBy: (event.screenX - obj.last.tmp.gx), originalEvent: event }));
+                        if (edata.isCancelled === true) { edata.isCancelled = false; return; }
                         // default action
                         obj.last.tmp.x = (event.screenX - obj.last.tmp.x);
                         obj.last.tmp.y = (event.screenY - obj.last.tmp.y);
@@ -5072,7 +5201,7 @@
                         obj.resizeRecords();
                         obj.scroll();
                         // event before
-                        obj.trigger($.extend(eventData, { phase: 'after', originalEvent: event }));
+                        obj.trigger($.extend(edata, { phase: 'after', originalEvent: event }));
                     };
                     $(document).on('mousemove', 'body', mouseMove);
                     $(document).on('mouseup', 'body', mouseUp);
@@ -5795,7 +5924,8 @@
                         tmpf = '<td id="grid_'+ obj.name + '_column_' + ii +'" class="w2ui-head '+ sortStyle +'" col="'+ ii + '" '+
                                '    rowspan="2" colspan="'+ colspan +'" '+
                                '    oncontextmenu = "w2ui[\''+ obj.name +'\'].contextMenu(null, '+ ii +', event);"'+
-                               '    onclick="w2ui[\''+ obj.name +'\'].columnClick(\''+ col.field +'\', event);">'+
+                               '    onclick="w2ui[\''+ obj.name +'\'].columnClick(\''+ col.field +'\', event);"'+
+                               '    ondblclick="w2ui[\''+ obj.name +'\'].columnDblClick(\''+ col.field +'\', event);">'+
                                    resizer +
                                '    <div class="w2ui-col-group w2ui-col-header '+ (sortStyle ? 'w2ui-col-sorted' : '') +'">'+
                                '        <div class="'+ sortStyle +'"></div>'+
@@ -5823,7 +5953,9 @@
                 var html1 = '<tr>';
                 var html2 = '<tr>';
                 if (obj.show.lineNumbers) {
-                    html1 += '<td class="w2ui-head w2ui-col-number" onclick="w2ui[\''+ obj.name +'\'].columnClick(\'line-number\', event);">'+
+                    html1 += '<td class="w2ui-head w2ui-col-number" '+
+                            '       onclick="w2ui[\''+ obj.name +'\'].columnClick(\'line-number\', event);"'+
+                            '       ondblclick="w2ui[\''+ obj.name +'\'].columnDblClick(\'line-number\', event);">'+
                             '    <div>#</div>'+
                             '</td>';
                 }
@@ -5837,7 +5969,7 @@
                             '            onclick="var grid = w2ui[\''+ obj.name +'\'];'+
                             '               if (this.checked) grid.selectAll(); else grid.selectNone();'+
                             '               if (event.stopPropagation) event.stopPropagation(); else event.cancelBubble = true;'+
-                            '                clearTimeout(grid.last.kbd_timer); $(grid.box).find(\'#grid_'+ this.name + '_focus\').focus();/* keep focus */' +
+                            '                clearTimeout(grid.last.kbd_timer); jQuery(grid.box).find(\'#grid_'+ this.name + '_focus\').focus();/* keep focus */' +
                             '            "/>'+
                             '    </div>'+
                             '</td>';
@@ -5900,7 +6032,8 @@
                         '    onmouseover = "w2ui[\''+ this.name +'\'].columnTooltipShow(\''+ i +'\', event);"'+
                         '    onmouseout  = "w2ui[\''+ this.name +'\'].columnTooltipHide(\''+ i +'\', event);"'+
                         '    oncontextmenu = "w2ui[\''+ this.name +'\'].contextMenu(null, '+ i +', event);"'+
-                        '    onclick="w2ui[\''+ this.name +'\'].columnClick(\''+ col.field +'\', event);">'+
+                        '    onclick="w2ui[\''+ this.name +'\'].columnClick(\''+ col.field +'\', event);"'+
+                        '    ondblclick="w2ui[\''+ this.name +'\'].columnDblClick(\''+ col.field +'\', event);">'+
                              (col.resizable !== false ? '<div class="w2ui-resizer" name="'+ i +'"></div>' : '') +
                         '    <div class="w2ui-col-header '+ (sortStyle ? 'w2ui-col-sorted' : '') +' '+ (selected ? 'w2ui-col-selected' : '') +'">'+
                         '        <div class="'+ sortStyle +'"></div>'+
@@ -6249,7 +6382,7 @@
                 if (this.autoLoad === true) {
                     this.last.pull_more = true;
                     this.last.xhr_offset += this.limit;
-                    this.request('get-records');
+                    this.request('get');
                 } else {
                     var more = $('#grid_'+ this.name +'_rec_more, #grid_'+ this.name +'_frec_more');
                     if (more.css('display') == 'none') {
@@ -6257,7 +6390,7 @@
                             .on('click', function () {
                                 obj.last.pull_more = true;
                                 obj.last.xhr_offset += obj.limit;
-                                obj.request('get-records');
+                                obj.request('get');
                                 // show spinner the last
                                 $(this).find('td').html('<div><div style="width: 20px; height: 20px;" class="w2ui-spinner"></div></div>');
                             });
@@ -6280,7 +6413,7 @@
                     for (var s = 0; s < obj.searchData.length; s++) {
                         var sdata = obj.searchData[s];
                         var fld = obj.getSearch(sdata.field);
-                        if (fld.hidden) continue;
+                        if (!fld || fld.hidden) continue;
                         if (str.indexOf(sdata.value) == -1) str.push(sdata.value);
                     }
                     if (str.length > 0) $(obj.box).find('.w2ui-grid-data > div').w2marker(str);
@@ -6354,8 +6487,8 @@
                     : ''
                 ) +
                 (this.selectType == 'row' ?
-                    ' onmouseover="$(\'#grid_'+ this.name +'_rec_\'+ w2utils.escapeId($(this).attr(\'recid\'))).addClass(\'w2ui-record-hover\')"'+
-                    ' onmouseout ="$(\'#grid_'+ this.name +'_rec_\'+ w2utils.escapeId($(this).attr(\'recid\'))).removeClass(\'w2ui-record-hover\')"'
+                    ' onmouseover="jQuery(\'#grid_'+ this.name +'_rec_\'+ w2utils.escapeId(jQuery(this).attr(\'recid\'))).addClass(\'w2ui-record-hover\')"'+
+                    ' onmouseout ="jQuery(\'#grid_'+ this.name +'_rec_\'+ w2utils.escapeId(jQuery(this).attr(\'recid\'))).removeClass(\'w2ui-record-hover\')"'
                     :
                     '') +
                 ' style="height: '+ this.recordHeight +'px; '+ (!isRowSelected && typeof record['style'] == 'string' ? record['style'] : '') +'" '+
@@ -6368,16 +6501,16 @@
                     (record.w2ui && record.w2ui.expanded === true ? ' w2ui-expanded' : '') + '" ' +
                 (summary !== true ?
                     (w2utils.isIOS ?
-                        '    onclick  = "var obj = w2ui[\''+ this.name +'\']; obj.dblClick($(this).attr(\'recid\'), event);"'
+                        '    onclick  = "var obj = w2ui[\''+ this.name +'\']; obj.dblClick(jQuery(this).attr(\'recid\'), event);"'
                         :
-                        '    onclick  = "var obj = w2ui[\''+ this.name +'\']; obj.click($(this).attr(\'recid\'), event);"'+
-                        '    oncontextmenu = "var obj = w2ui[\''+ this.name +'\']; obj.contextMenu($(this).attr(\'recid\'), null, event);"'
+                        '    onclick  = "var obj = w2ui[\''+ this.name +'\']; obj.click(jQuery(this).attr(\'recid\'), event);"'+
+                        '    oncontextmenu = "var obj = w2ui[\''+ this.name +'\']; obj.contextMenu(jQuery(this).attr(\'recid\'), null, event);"'
                      )
                     : ''
                 ) +
                 (this.selectType == 'row' ?
-                    ' onmouseover="$(\'#grid_'+ this.name +'_frec_\' + w2utils.escapeId($(this).attr(\'recid\'))).addClass(\'w2ui-record-hover\')"'+
-                    ' onmouseout ="$(\'#grid_'+ this.name +'_frec_\' + w2utils.escapeId($(this).attr(\'recid\'))).removeClass(\'w2ui-record-hover\')"'
+                    ' onmouseover="jQuery(\'#grid_'+ this.name +'_frec_\' + w2utils.escapeId(jQuery(this).attr(\'recid\'))).addClass(\'w2ui-record-hover\')"'+
+                    ' onmouseout ="jQuery(\'#grid_'+ this.name +'_frec_\' + w2utils.escapeId(jQuery(this).attr(\'recid\'))).removeClass(\'w2ui-record-hover\')"'
                     :
                     '') +
                 ' style="height: '+ this.recordHeight +'px; '+ (!isRowSelected && typeof record['style'] == 'string' ? record['style'] : '') +'" '+
@@ -6399,10 +6532,10 @@
                             '        <input class="w2ui-grid-select-check" type="checkbox" tabindex="-1" '+ (isRowSelected ? 'checked="checked"' : '') +
                             '           onmousedown="if (event.stopPropagation) event.stopPropagation();"'+
                             '           onclick="var grid = w2ui[\''+ this.name +'\'];'+
-                            '                var recid = $(this).parents(\'tr\').attr(\'recid\'); '+
+                            '                var recid = jQuery(this).parents(\'tr\').attr(\'recid\'); '+
                             '                if (!grid.multiSelect) { grid.selectNone(); }'+
                             '                if (this.checked) grid.select(recid); else grid.unselect(recid);'+
-                            '                clearTimeout(grid.last.kbd_timer); $(grid.box).find(\'#grid_'+ this.name + '_focus\').focus(); /* keep focus */' +
+                            '                clearTimeout(grid.last.kbd_timer); jQuery(grid.box).find(\'#grid_'+ this.name + '_focus\').focus(); /* keep focus */' +
                             '           "/>'+
                             '    </div>'
                             :
@@ -6418,7 +6551,7 @@
                         '<td id="grid_'+ this.name +'_cell_'+ ind +'_expand' + (summary ? '_s' : '') + '" class="w2ui-grid-data w2ui-col-expand">'+
                             (summary !== true ?
                             '    <div ondblclick="if (event.stopPropagation) event.stopPropagation(); else event.cancelBubble = true;" '+
-                            '            onclick="w2ui[\''+ this.name +'\'].toggle($(this).parents(\'tr\').attr(\'recid\')); '+
+                            '            onclick="w2ui[\''+ this.name +'\'].toggle(jQuery(this).parents(\'tr\').attr(\'recid\')); '+
                             '                if (event.stopPropagation) event.stopPropagation(); else event.cancelBubble = true;">'+
                             '        '+ tmp_img +' </div>'
                             :
@@ -6487,7 +6620,7 @@
             var data          = this.getCellValue(ind, col_ind, summary);
             var edit          = col.editable;
             var style         = 'max-height: '+ parseInt(this.recordHeight) +'px;';
-            var isChanged     = !summary && record.w2ui && record.w2ui.changes && record.w2ui.changes[col.field] != null;
+            var isChanged     = !summary && record && record.w2ui && record.w2ui.changes && record.w2ui.changes[col.field] != null;
             var addStyle      = '';
             var sel           = this.last.selection;
             var isRowSelected = false;
@@ -6495,7 +6628,7 @@
             if (sel.indexes.indexOf(ind) != -1) isRowSelected = true;
             if (col_span == null) col_span = 1;
             // expand icon
-            if (col_ind == 0 && record.w2ui && Array.isArray(record.w2ui.children)) {
+            if (col_ind == 0 && record && record.w2ui && Array.isArray(record.w2ui.children)) {
                 var level  = 0;
                 var subrec = this.get(record.w2ui.parent_recid, true);
                 while (true) {
@@ -6519,7 +6652,7 @@
                             ? (record.w2ui.expanded ? 'w2ui-icon-collapse' : 'w2ui-icon-expand')
                             : 'w2ui-icon-empty'
                         ) +'" '+
-                    ' onclick="event.stopPropagation(); w2ui[\''+ this.name + '\'].toggle($(this).parents(\'tr\').attr(\'recid\'))"></span>';
+                    ' onclick="event.stopPropagation(); w2ui[\''+ this.name + '\'].toggle(jQuery(this).parents(\'tr\').attr(\'recid\'))"></span>';
             }
             // info bubble
             if (col.info === true) col.info = {};
@@ -6580,7 +6713,7 @@
                 var tmp = col.render.toLowerCase().split(':');
                 if (['number', 'int', 'float', 'money', 'currency', 'percent', 'size'].indexOf(tmp[0]) != -1) addStyle += 'text-align: right;';
             }
-            if (record.w2ui && typeof record.w2ui.style == 'object') {
+            if (record && record.w2ui && typeof record.w2ui.style == 'object') {
                 if (typeof record.w2ui.style[col_ind] == 'string') addStyle += record.w2ui.style[col_ind] + ';';
                 if (typeof record.w2ui.style[col.field] == 'string') addStyle += record.w2ui.style[col.field] + ';';
             }
@@ -6652,6 +6785,7 @@
                     }
                     var tmp = String(fld).split(':');
                     var col = this.getColumn(tmp[0]);
+                    if (col == null) col = { field: tmp[0], caption: tmp[0] }; // if not found in columns
                     var val = (col ? this.parseField(rec, col.field) : '');
                     if (tmp.length > 1) {
                         if (w2utils.formatters[tmp[1]]) {
@@ -6683,7 +6817,7 @@
             var col    = this.columns[col_ind];
             var record = (summary !== true ? this.records[ind] : this.summary[ind]);
             var data   = this.parseField(record, col.field);
-            if (record.w2ui && record.w2ui.changes && record.w2ui.changes[col.field] != null) {
+            if (record && record.w2ui && record.w2ui.changes && record.w2ui.changes[col.field] != null) {
                 data = record.w2ui.changes[col.field];
             }
             if ($.isPlainObject(data) && col.editable && col.editable.type == 'list') {
@@ -6771,8 +6905,8 @@
             // save into local storage
             if (returnOnly !== true) {
                 // event before
-                var eventData = this.trigger({ phase: 'before', type: 'stateSave', target: this.name, state: state });
-                if (eventData.isCancelled === true) { if (typeof callBack == 'function') callBack({ status: 'error', message: 'Request aborted.' }); return; }
+                var edata = this.trigger({ phase: 'before', type: 'stateSave', target: this.name, state: state });
+                if (edata.isCancelled === true) { if (typeof callBack == 'function') callBack({ status: 'error', message: 'Request aborted.' }); return; }
                 try {
                     var savedState = $.parseJSON(localStorage.w2ui || '{}');
                     if (!savedState) savedState = {};
@@ -6784,7 +6918,7 @@
                     return null;
                 }
                 // event after
-                this.trigger($.extend(eventData, { phase: 'after' }));
+                this.trigger($.extend(edata, { phase: 'after' }));
             }
             return state;
         },
@@ -6806,8 +6940,8 @@
                 }
             }
             // event before
-            var eventData = this.trigger({ phase: 'before', type: 'stateRestore', target: this.name, state: newState });
-            if (eventData.isCancelled === true) { if (typeof callBack == 'function') callBack({ status: 'error', message: 'Request aborted.' }); return; }
+            var edata = this.trigger({ phase: 'before', type: 'stateRestore', target: this.name, state: newState });
+            if (edata.isCancelled === true) { if (typeof callBack == 'function') callBack({ status: 'error', message: 'Request aborted.' }); return; }
             // default behavior
             if ($.isPlainObject(newState)) {
                 $.extend(this.show, newState.show);
@@ -6837,7 +6971,7 @@
                 }, 1);
             }
             // event after
-            this.trigger($.extend(eventData, { phase: 'after' }));
+            this.trigger($.extend(edata, { phase: 'after' }));
             return true;
         },
 

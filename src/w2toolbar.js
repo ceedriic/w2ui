@@ -21,6 +21,7 @@
 *   - item.text and item.html - can be functions now (or string), where this keyword is the item
 *   - item.style - style for caption in the button
 *   - item.check
+*   - item.color, item.transparent - for color buttons
 *
 ************************************************************************/
 
@@ -317,9 +318,9 @@
             }
             if (it && !it.disabled) {
                 // event before
-                var eventData = this.trigger({ phase: 'before', type: 'click', target: (id != null ? id : this.name),
+                var edata = this.trigger({ phase: 'before', type: 'click', target: (id != null ? id : this.name),
                     item: it, object: it, originalEvent: event });
-                if (eventData.isCancelled === true) return;
+                if (edata.isCancelled === true) return;
 
                 var btn = '#tb_'+ this.name +'_item_'+ w2utils.escapeId(it.id) +' table.w2ui-button';
                 $(btn).removeClass('down'); // need to requery at the moment -- as well as elsewhere in this function
@@ -387,7 +388,8 @@
                                 }));
                             }
                             if (['color', 'text-color'].indexOf(it.type) != -1) {
-                                $(el).w2color(it.color, function (color, index) {
+                                if (it.transparent == null) it.transparent = true;
+                                $(el).w2color({ color: it.color, transparent: it.transparent }, function (color, index) {
                                     if (color != null) {
                                         obj.colorClick({ name: obj.name, item: it, color: color, originalEvent: event.originalEvent });
                                     }
@@ -422,7 +424,7 @@
                     setTimeout(function () { window.location.hash = route; }, 1);
                 }
                 // event after
-                this.trigger($.extend(eventData, { phase: 'after' }));
+                this.trigger($.extend(edata, { phase: 'after' }));
             }
         },
 
@@ -487,8 +489,8 @@
         render: function (box) {
             var time = (new Date()).getTime();
             // event before
-            var eventData = this.trigger({ phase: 'before', type: 'render', target: this.name, box: box });
-            if (eventData.isCancelled === true) return;
+            var edata = this.trigger({ phase: 'before', type: 'render', target: this.name, box: box });
+            if (edata.isCancelled === true) return;
 
             if (box != null) {
                 if ($(this.box).find('> table #tb_'+ this.name + '_right').length > 0) {
@@ -526,15 +528,15 @@
                 .html(html);
             if ($(this.box).length > 0) $(this.box)[0].style.cssText += this.style;
             // event after
-            this.trigger($.extend(eventData, { phase: 'after' }));
+            this.trigger($.extend(edata, { phase: 'after' }));
             return (new Date()).getTime() - time;
         },
 
         refresh: function (id) {
             var time = (new Date()).getTime();
             // event before
-            var eventData = this.trigger({ phase: 'before', type: 'refresh', target: (id != null ? id : this.name), item: this.get(id) });
-            if (eventData.isCancelled === true) return;
+            var edata = this.trigger({ phase: 'before', type: 'refresh', target: (id != null ? id : this.name), item: this.get(id) });
+            if (edata.isCancelled === true) return;
 
             if (id == null) {
                 // refresh all
@@ -576,15 +578,15 @@
                 if (it.disabled) { el.addClass('disabled'); } else { el.removeClass('disabled'); }
             }
             // event after
-            this.trigger($.extend(eventData, { phase: 'after' }));
+            this.trigger($.extend(edata, { phase: 'after' }));
             return (new Date()).getTime() - time;
         },
 
         resize: function () {
             var time = (new Date()).getTime();
             // event before
-            var eventData = this.trigger({ phase: 'before', type: 'resize', target: this.name });
-            if (eventData.isCancelled === true) return;
+            var edata = this.trigger({ phase: 'before', type: 'resize', target: this.name });
+            if (edata.isCancelled === true) return;
 
             var box = $(this.box);
             var scrollBox = box.children('.w2ui-toolbar-scroll-wrapper');
@@ -606,14 +608,14 @@
             }
 
             // event after
-            this.trigger($.extend(eventData, { phase: 'after' }));
+            this.trigger($.extend(edata, { phase: 'after' }));
             return (new Date()).getTime() - time;
         },
 
         destroy: function () {
             // event before
-            var eventData = this.trigger({ phase: 'before', type: 'destroy', target: this.name });
-            if (eventData.isCancelled === true) return;
+            var edata = this.trigger({ phase: 'before', type: 'destroy', target: this.name });
+            if (edata.isCancelled === true) return;
             // clean up
             if ($(this.box).find('> table #tb_'+ this.name + '_right').length > 0) {
                 $(this.box)
@@ -624,7 +626,7 @@
             $(this.box).html('');
             delete w2ui[this.name];
             // event after
-            this.trigger($.extend(eventData, { phase: 'after' }));
+            this.trigger($.extend(edata, { phase: 'after' }));
         },
 
         // ========================================
@@ -647,7 +649,7 @@
                 case 'text-color':
                     if (typeof item.color == 'string' && item.color.substr(0,1) == '#') item.color = item.color.substr(1);
                     if (item.type == 'color') {
-                        text = '<div style="height: 12px; width: 12px; margin-top: 1px; border: 1px solid #efefef; '+
+                        text = '<div style="height: 12px; width: 12px; margin-top: 1px; border: 1px solid #8A8A8A; border-radius: 1px; box-shadow: 0px 0px 1px #fff; '+
                                '        background-color: #'+ (item.color != null ? item.color : 'fff') +'; float: left;"></div>'+
                                (item.text ? '<div style="margin-left: 17px;">' + w2utils.lang(item.text) + '</div>' : '');
                     }
@@ -666,10 +668,10 @@
                     html += '<table cellpadding="0" cellspacing="0" '+ (this.tooltip == 'normal' && item.tooltip != null ? 'title="'+ w2utils.lang(item.tooltip) +'"' : '') +
                             '       class="w2ui-button '+ (item.checked ? 'checked' : '') +'" '+
                             '       onclick     = "var el=w2ui[\''+ this.name + '\']; if (el) el.click(\''+ item.id +'\', event);" '+
-                            '       onmouseover = "' + (!item.disabled ? "$(this).addClass('over'); w2ui['"+ this.name +"'].tooltipShow('"+ item.id +"', event);" : "") + '"'+
-                            '       onmouseout  = "' + (!item.disabled ? "$(this).removeClass('over').removeClass('down'); w2ui['"+ this.name +"'].tooltipHide('"+ item.id +"', event);" : "") + '"'+
-                            '       onmousedown = "' + (!item.disabled ? "$(this).addClass('down');" : "") + '"'+
-                            '       onmouseup   = "' + (!item.disabled ? "$(this).removeClass('down');" : "") + '"'+
+                            '       onmouseover = "' + (!item.disabled ? "jQuery(this).addClass('over'); w2ui['"+ this.name +"'].tooltipShow('"+ item.id +"', event);" : "") + '"'+
+                            '       onmouseout  = "' + (!item.disabled ? "jQuery(this).removeClass('over').removeClass('down'); w2ui['"+ this.name +"'].tooltipHide('"+ item.id +"', event);" : "") + '"'+
+                            '       onmousedown = "' + (!item.disabled ? "jQuery(this).addClass('down');" : "") + '"'+
+                            '       onmouseup   = "' + (!item.disabled ? "jQuery(this).removeClass('down');" : "") + '"'+
                             '><tbody>'+
                             '<tr><td>'+
                             '  <table cellpadding="1" cellspacing="0"><tbody>'+
@@ -743,9 +745,9 @@
             var obj = this;
             if (event.item && !event.item.disabled) {
                 // event before
-                var eventData = this.trigger({ phase: 'before', type: 'click', target: event.item.id + ':' + event.subItem.id, item: event.item,
+                var edata = this.trigger({ phase: 'before', type: 'click', target: event.item.id + ':' + event.subItem.id, item: event.item,
                     subItem: event.subItem, originalEvent: event.originalEvent });
-                if (eventData.isCancelled === true) return;
+                if (edata.isCancelled === true) return;
 
                 // route processing
                 var it   = event.subItem;
@@ -779,7 +781,7 @@
                 }
 
                 // event after
-                this.trigger($.extend(eventData, { phase: 'after' }));
+                this.trigger($.extend(edata, { phase: 'after' }));
             }
         },
 
@@ -787,16 +789,16 @@
             var obj = this;
             if (event.item && !event.item.disabled) {
                 // event before
-                var eventData = this.trigger({ phase: 'before', type: 'click', target: event.item.id, item: event.item,
+                var edata = this.trigger({ phase: 'before', type: 'click', target: event.item.id, item: event.item,
                     color: event.color, originalEvent: event.originalEvent });
-                if (eventData.isCancelled === true) return;
+                if (edata.isCancelled === true) return;
 
                 // default behavior
                 event.item.color = event.color;
                 obj.refresh(event.item.id);
 
                 // event after
-                this.trigger($.extend(eventData, { phase: 'after' }));
+                this.trigger($.extend(edata, { phase: 'after' }));
             }
         }
     };
