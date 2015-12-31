@@ -89,10 +89,15 @@ $(function () {
             { id: 'toolbar', text: 'Toolbar', img: 'icon-folder', group1: true,
                 nodes: [
                     { id: 'toolbar-1', text: 'Simple Toolbar', icon: 'fa-hand-up' },
-                    { id: 'toolbar-2', text: 'Advanced Toolbar', icon: 'fa-hand-up' },
+                    { id: 'toolbar-2', text: 'More Buttons Type', icon: 'fa-hand-up' },
                     { id: 'toolbar-3', text: 'Add/Remove Buttons', icon: 'fa-hand-up' },
                     { id: 'toolbar-4', text: 'Show/Hide Buttons', icon: 'fa-hand-up' },
-                    { id: 'toolbar-5', text: 'Enable/Disable Buttons', icon: 'fa-hand-up' }
+                    { id: 'toolbar-5', text: 'Enable/Disable Buttons', icon: 'fa-hand-up' },
+                    { id: 'toolbar-6', text: 'Menu Buttons (1.5+)', icon: 'fa-hand-up' },
+                    { id: 'toolbar-7', text: 'Color Buttons (1.5+)', icon: 'fa-hand-up' },
+                    { id: 'toolbar-8', text: 'Tooltips (1.5+)', icon: 'fa-hand-up' },
+                    { id: 'toolbar-9', text: 'Custom Butons (1.5+)', icon: 'fa-hand-up' },
+                    { id: 'toolbar-10', text: 'Toolbar Overflow (1.5+)', icon: 'fa-hand-up' }
                 ]
             },
             { id: 'sidebar', text: 'Sidebar', img: 'icon-folder', group1: true,
@@ -123,7 +128,9 @@ $(function () {
                     { id: 'tabs-3', text: 'Closable Tabs', icon: 'fa-folder-close-alt' },
                     { id: 'tabs-4', text: 'Add/Remove Tabs', icon: 'fa-folder-close-alt' },
                     { id: 'tabs-5', text: 'Enable/Disabled Tabs', icon: 'fa-folder-close-alt' },
-                    { id: 'tabs-6', text: 'Show/Hide Tabs', icon: 'fa-folder-close-alt' }
+                    { id: 'tabs-6', text: 'Show/Hide Tabs', icon: 'fa-folder-close-alt' },
+                    { id: 'tabs-7', text: 'Tabs Overflow (1.5+)', icon: 'fa-folder-close-alt' },
+                    { id: 'tabs-8', text: 'Tooltips (1.5+)', icon: 'fa-folder-close-alt' }
                 ]
             },
             { id: 'forms', text: 'Forms', img: 'icon-folder', group1: true,
