@@ -109,7 +109,9 @@ $(function () {
                     { id: 'sidebar-5', text: 'Expand/Collapse', icon: 'fa-hand-left' },
                     { id: 'sidebar-6', text: 'Select/Unselect', icon: 'fa-hand-left' },
                     { id: 'sidebar-8', text: 'Top & Bottom HTML', icon: 'fa-hand-left' },
-                    { id: 'sidebar-7', text: 'Events', icon: 'fa-hand-left' }
+                    { id: 'sidebar-7', text: 'Events', icon: 'fa-hand-left' },
+                    { id: 'sidebar-9', text: 'Flat Sidebar (1.5+)', icon: 'fa-hand-up' },
+                    { id: 'sidebar-10', text: 'In/Out of Focus (1.5+)', icon: 'fa-hand-up' }
                 ]
             },
             // { id: 'listview', text: 'ListView', img: 'icon-folder', group1: true,
@@ -166,7 +168,9 @@ $(function () {
                     { id: 'popup-6', text: 'Transitions', icon: 'fa-list-alt' },
                     { id: 'popup-7', text: 'Slide a Message', icon: 'fa-list-alt' },
                     { id: 'popup-9', text: 'Lock Content', icon: 'fa-list-alt' },
-                    { id: 'popup-8', text: 'Dialogs', icon: 'fa-list-alt' }
+                    { id: 'popup-8', text: 'Dialogs', icon: 'fa-list-alt' },
+                    { id: 'popup-10', text: 'Keyboard (1.5+)', icon: 'fa-list-alt' },
+                    { id: 'popup-11', text: 'Messages (1.5+)', icon: 'fa-list-alt' }
                 ]
             },
             { id: 'utils', text: 'Utilities', img: 'icon-folder', group1: true,

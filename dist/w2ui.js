@@ -28,39 +28,6 @@ var w2obj = w2obj || {}; // expose object to be able to overwrite default functi
 *   - add w2utils.lang wrap for all captions in all buttons.
 *   - $().w2date(), $().w2dateTime()
 *
-* == 1.5 changes
-*   - date has problems in FF new Date('yyyy-mm-dd') breaks
-*   - bug: w2utils.formatDate('2011-31-01', 'yyyy-dd-mm'); - wrong foratter
-*   - format date and time is buggy
-*   - added decimalSymbol
-*   - renamed size() -> formatSize()
-*   - added cssPrefix()
-*   - added w2utils.settings.weekStarts
-*   - onComplete should pass widget as context (this)
-*   - hidden and disabled in menus
-*   - added menu.item.tooltip for overlay menus
-*   - added w2tag options.id, options.left, options.top
-*   - added w2tag options.position = top|bottom|left|right - default is right
-*   - added $().w2color(color, callBack)
-*   - added custom colors
-*   - added w2menu.options.type = radio|check
-*   - added w2menu items.hotkey
-*   - added options.contextMenu, options.pageX, options.pageY (or options.originalEvent) for w2overlay()
-*   - added options.noTip for w2overlay()
-*   - added options.overlayStyle for w2overlay()
-*   - added options.selectable
-*   - Refactored w2tag
-*   - added options.style for w2tag
-*   - added options.hideOnKeyPress for w2tag
-*   - added options.hideOnBlur for w2tag
-*   - events 'eventName:after' syntax
-*   - deprecated onComplete, introduced event.done(func) - can have multiple handlers
-*   - added getCursorPosition, setCursorPosition
-*   - w2tag hideOnClick - hides on document click
-*   - add isDateTime()
-*   - data_format -> dateFormat, time_format -> timeFormat
-*   - implemented w2utils.formatters (used in grid)
-*
 ************************************************/
 
 var w2utils = (function ($) {
@@ -69,8 +36,8 @@ var w2utils = (function ($) {
         version  : '1.5.x',
         settings : {
             "locale"            : "en-us",
-            "dateFormat"       : "m/d/yyyy",
-            "timeFormat"       : "hh:mi pm",
+            "dateFormat"        : "m/d/yyyy",
+            "timeFormat"        : "hh:mi pm",
             "currencyPrefix"    : "$",
             "currencySuffix"    : "",
             "currencyPrecision" : 2,
@@ -2225,6 +2192,7 @@ w2utils.event = {
                 img      : '',
                 icon     : '',
                 count    : '',
+                tooltip  : '',
                 hidden   : false,
                 checked  : null,
                 disabled : false
@@ -2757,6 +2725,7 @@ w2utils.event = {
         }
     }
 *   - added this.show.toolbarInput
+*   - disableCVS
 *
 ************************************************************************/
 
@@ -10921,20 +10890,6 @@ w2utils.event = {
 *   - hide overlay on esc
 *   - make popup width/height in %
 *
-* == 1.5 changes
-*   - new: resizeMessages()
-*   - popup can be moved/resized/closed when locked or has messages
-*   - messages negative width/height means margin
-*   - added btn_yes and btn_no
-*   - dismissed message will slide up - added parameter unlock(speed)
-*   - refactor -webkit-* -moz-* to a function
-*   - resize nested elements in popup for onMin, onMax
-*   - rename btn -> w2ui-btn and same for colored ones
-*   - added options.body and options.buttons for w2popup.message
-*   - .message() should have same props (body, buttons, title?)
-*   - template improvements (if template already in DOM, it will move it under popup, not recreate)
-*   - added focus()
-*
 ************************************************************************/
 
 var w2popup = {};
@@ -11141,7 +11096,7 @@ var w2popup = {};
 
             } else {
                 // if was from template and now not
-                if (w2popup._prev == null && w2popup._template != null) obj._restoreTemplate();
+                if (w2popup._prev == null && w2popup._template != null) obj.restoreTemplate();
 
                 // trigger event
                 var edata = this.trigger({ phase: 'before', type: 'open', target: 'popup', options: options, present: true });
@@ -11201,7 +11156,7 @@ var w2popup = {};
                 var div_new = $('#w2ui-popup .w2ui-box-temp')[0];
                 w2utils.transition(div_old, div_new, options.transition, function () {
                     // clean up
-                    obj._restoreTemplate();
+                    obj.restoreTemplate();
                     $(div_old).remove();
                     $(div_new).removeClass('w2ui-box-temp').addClass('w2ui-box');
                     var $body = $(div_new).find('.w2ui-msg-body');
@@ -11319,7 +11274,7 @@ var w2popup = {};
             w2popup.unlockScreen(options);
             setTimeout(function () {
                 // return template
-                obj._restoreTemplate();
+                obj.restoreTemplate();
                 $('#w2ui-popup').remove();
                 w2popup.status = 'closed';
                 // restore active
@@ -11710,7 +11665,7 @@ var w2popup = {};
         **/
 
         // restores template
-        _restoreTemplate: function () {
+        restoreTemplate: function () {
             var options  = $('#w2ui-popup').data('options');
             if (options == null) return;
             var template = w2popup._template;
@@ -13229,18 +13184,6 @@ var w2confirm = function (msg, title, callBack) {
 *   - reorder with dgrag and drop
 *   - node.style is misleading - should be there to apply color for example
 *   - add multiselect
-*   - add renderer for the node
-*
-* == 1.5 changes
-*   - $('#sidebar').w2sidebar() - if called w/o argument then it returns sidebar object
-*   - add route property that would navigate to a #route
-*   - return ids of all subitems
-*   - added w2sidebar.flat
-*   - added focus(), blur(), onFocus, onBlur
-*   - unselect w/o arguments will unselect selected node
-*   - added hasFocus property
-*   - node.render deprecated, nd.text can be a function (where this word is the item)
-*   - node.collapsible - defines if it can be collapsed
 *
 ************************************************************************/
 
@@ -13259,6 +13202,7 @@ var w2confirm = function (msg, title, callBack) {
         this.style         = '';
         this.topHTML       = '';
         this.bottomHTML    = '';
+        this.flatButton    = false;
         this.keyboard      = true;
         this.flat          = false;
         this.hasFocus      = false;
@@ -13318,6 +13262,7 @@ var w2confirm = function (msg, title, callBack) {
         onDestroy     : null,
         onFocus       : null,
         onBlur        : null,
+        onFlat        : null,
 
         node: {
             id              : null,
@@ -13344,8 +13289,7 @@ var w2confirm = function (msg, title, callBack) {
             onCollapse      : null,
             // internal
             parent          : null,         // node object
-            sidebar         : null,
-            render          : null          // custom render function(node)
+            sidebar         : null
         },
 
         add: function (parent, nodes) {
@@ -13897,6 +13841,17 @@ var w2confirm = function (msg, title, callBack) {
             obj.trigger($.extend(edata, { phase: 'after' }));
         },
 
+        goFlat: function () {
+            // event before
+            var edata = this.trigger({ phase: 'before', type: 'flat', goFlat: !this.flat });
+            if (edata.isCancelled === true) return;
+            // default action
+            this.flat = !this.flat;
+            this.refresh();
+            // event after
+            this.trigger($.extend(edata, { phase: 'after' }));
+        },
+
         render: function (box) {
             var time = (new Date()).getTime();
             var obj  = this;
@@ -13931,8 +13886,12 @@ var w2confirm = function (msg, title, callBack) {
             });
             if ($(this.box).length > 0) $(this.box)[0].style.cssText += this.style;
             // adjust top and bottom
-            if (this.topHTML !== '') {
-                $(this.box).find('.w2ui-sidebar-top').html(this.topHTML);
+            var flatHTML = '';
+            if (this.flatButton == true) {
+                flatHTML = '<div class="w2ui-flat-'+ (this.flat ? 'right' : 'left') +'" onclick="w2ui[\''+ this.name +'\'].goFlat()"></div>';
+            }
+            if (this.topHTML !== '' || flatHTML != '') {
+                $(this.box).find('.w2ui-sidebar-top').html(this.topHTML + flatHTML);
                 $(this.box).find('.w2ui-sidebar-div')
                     .css('top', $(this.box).find('.w2ui-sidebar-top').height() + 'px');
             }
@@ -13946,11 +13905,11 @@ var w2confirm = function (msg, title, callBack) {
             $(this.box).find('#sidebar_'+ this.name + '_focus')
                 .on('focus', function (event) {
                     clearTimeout(kbd_timer);
-                    if (!obj.hasFocus) obj.focus();
+                    if (!obj.hasFocus) obj.focus(event);
                 })
                 .on('blur', function (event) {
                     kbd_timer = setTimeout(function () {
-                        if (obj.hasFocus) { obj.blur(); }
+                        if (obj.hasFocus) { obj.blur(event); }
                     }, 100);
                 })
                 .on('keydown', function (event) {
@@ -13982,8 +13941,12 @@ var w2confirm = function (msg, title, callBack) {
                 fullRefresh: (id != null ? false : true) });
             if (edata.isCancelled === true) return;
             // adjust top and bottom
-            if (this.topHTML !== '') {
-                $(this.box).find('.w2ui-sidebar-top').html(this.topHTML);
+            var flatHTML = '';
+            if (this.flatButton == true) {
+                flatHTML = '<div class="w2ui-flat-'+ (this.flat ? 'right' : 'left') +'" onclick="w2ui[\''+ this.name +'\'].goFlat()"></div>';
+            }
+            if (this.topHTML !== '' || flatHTML !== '') {
+                $(this.box).find('.w2ui-sidebar-top').html(this.topHTML + flatHTML);
                 $(this.box).find('.w2ui-sidebar-div')
                     .css('top', $(this.box).find('.w2ui-sidebar-top').height() + 'px');
             }
@@ -14060,7 +14023,7 @@ var w2confirm = function (msg, title, callBack) {
                         '        onmouseout="jQuery(this).find(\'span:nth-child(1)\').css(\'color\', \'transparent\')" '+
                         '        onmouseover="jQuery(this).find(\'span:nth-child(1)\').css(\'color\', \'inherit\')">'+
                         ((nd.groupShowHide && nd.collapsible) ? '<span>'+ (!nd.hidden && nd.expanded ? w2utils.lang('Hide') : w2utils.lang('Show')) +'</span>' : '<span></span>') +
-                        (typeof nd.text == 'function' ? nd.text.call(nd) : '<span>'+ nd.text +'</span>') +
+                        (typeof nd.text == 'function' ? nd.text.call(obj, nd) : '<span>'+ nd.text +'</span>') +
                         '</div>'+
                         '<div class="w2ui-node-sub" id="node_'+ nd.id +'_sub" style="'+ nd.style +';'+ (!nd.hidden && nd.expanded ? '' : 'display: none;') +'"></div>';
                     if (obj.flat) {
@@ -14073,7 +14036,7 @@ var w2confirm = function (msg, title, callBack) {
                     if (img) tmp  = '<div class="w2ui-node-image w2ui-icon '+ img +    (nd.selected && !nd.disabled ? " w2ui-icon-selected" : "") +'"></div>';
                     if (icon) tmp = '<div class="w2ui-node-image"><span class="'+ icon +'"></span></div>';
                     var text = nd.text;
-                    if (typeof nd.text == 'function') text = nd.text.call(nd);
+                    if (typeof nd.text == 'function') text = nd.text.call(obj, nd);
                     html =  '<div class="w2ui-node '+ (nd.selected ? 'w2ui-selected' : '') +' '+ (nd.disabled ? 'w2ui-disabled' : '') +'" id="node_'+ nd.id +'" style="'+ (nd.hidden ? 'display: none;' : '') +'"'+
                             '    ondblclick="w2ui[\''+ obj.name +'\'].dblClick(\''+ nd.id +'\', event);"'+
                             '    oncontextmenu="w2ui[\''+ obj.name +'\'].contextMenu(\''+ nd.id +'\', event);"'+
@@ -14155,7 +14118,6 @@ var w2confirm = function (msg, title, callBack) {
     $.extend(w2sidebar.prototype, w2utils.event);
     w2obj.sidebar = w2sidebar;
 })(jQuery);
-
 /************************************************************************
 *   Library: Web 2.0 UI for jQuery (using prototypical inheritance)
 *   - Following objects defined
