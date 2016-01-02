@@ -102,6 +102,7 @@
     }
 *   - added this.show.toolbarInput
 *   - disableCVS
+*   - added noReset option to localSort()
 *
 ************************************************************************/
 
@@ -376,7 +377,7 @@
             var url = (typeof this.url != 'object' ? this.url : this.url.get);
             if (!url) {
                 this.total = this.records.length;
-                this.localSort();
+                this.localSort(false, !first);
                 this.localSearch();
             }
             this.refresh(); // ??  should it be reload?
@@ -689,7 +690,7 @@
             return null;
         },
 
-        localSort: function (silent) {
+        localSort: function (silent, noReset) {
             var url = (typeof this.url != 'object' ? this.url : this.url.get);
             if (url) {
                 console.log('ERROR: grid.localSort can only be used on local data source, grid.url should be empty.');
@@ -701,7 +702,8 @@
             // process date fields
             obj.selectionSave();
             obj.prepareData();
-            obj.reset();
+            if (!noReset)
+                obj.reset();
             // process sortData
             for (var i = 0; i < this.sortData.length; i++) {
                 var column = this.getColumn(this.sortData[i].field);
@@ -876,142 +878,8 @@
                 this.total = 0;
                 for (var i = 0; i < this.records.length; i++) {
                     var rec = this.records[i];
-                    var orNb = 0;
-                    var orTot = 0;
-                    var andNb = 0;
-                    var andTot = 0;
-                    for (var j = 0; j < this.searchData.length; j++) {
-                        var sdata  = this.searchData[j];
-                        var search = this.getSearch(sdata.field);
-                        if (sdata  == null) continue;
-                        if (search == null) search = { field: sdata.field, type: sdata.type };
-                        var val1b = obj.parseField(rec, search.field);
-                        var val1 = (val1b !== null && val1b !== undefined &&
-                            (typeof val1b != "object" || val1b.toString != defaultToString)) ?
-                            String(val1b).toLowerCase() : "";  // do not match a bogus string
-                        if (sdata.value != null) {
-                            if (!$.isArray(sdata.value)) {
-                                var val2 = String(sdata.value).toLowerCase();
-                            } else {
-                                var val2 = sdata.value[0];
-                                var val3 = sdata.value[1];
-                            }
-                        }
-                        var fl = 0;
-                        switch (sdata.operator) {
-                            case 'is':
-                                if (obj.parseField(rec, search.field) == sdata.value) fl++; // do not hide record
-                                // only increment "fl" once -> use "else if"
-                                else if (search.type == 'date') {
-                                    var tmp  = getDateField(rec, search);
-                                    var val1 = w2utils.formatDate(tmp, 'yyyy-mm-dd');
-                                    var val2 = w2utils.formatDate(w2utils.isDate(val2, w2utils.settings.dateFormat, true),  'yyyy-mm-dd');
-                                    if (val1 == val2) fl++;
-                                }
-                                // only increment "fl" once -> use "else if"
-                                else if (search.type == 'time') {
-                                    var tmp  = getTimeField(rec, search);
-                                    var val1 = w2utils.formatTime(tmp, 'hh24:mi');
-                                    var val2 = w2utils.formatTime(val2, 'hh24:mi');
-                                    if (val1 == val2) fl++;
-                                }
-                                break;
-                            case 'between':
-                                if (['int', 'float', 'money', 'currency', 'percent'].indexOf(search.type) != -1) {
-                                    if (parseFloat(obj.parseField(rec, search.field)) >= parseFloat(val2) && parseFloat(obj.parseField(rec, search.field)) <= parseFloat(val3)) fl++;
-                                }
-                                if (search.type == 'date') {
-                                    var val1 = getDateField(rec, search);
-                                    var val2 = w2utils.isDate(val2, w2utils.settings.dateFormat, true);
-                                    var val3 = w2utils.isDate(val3, w2utils.settings.dateFormat, true);
-                                    if (val3 != null) val3 = new Date(val3.getTime() + 86400000); // 1 day
-                                    if (val1 >= val2 && val1 < val3) fl++;
-                                }
-                                if (search.type == 'time') {
-                                    var val1 = getTimeField(rec, search);
-                                    var val2 = w2utils.isTime(val2, true);
-                                    var val3 = w2utils.isTime(val3, true);
-                                    val2 = (new Date()).setHours(val2.hours, val2.minutes, val2.seconds ? val2.seconds : 0, 0);
-                                    val3 = (new Date()).setHours(val3.hours, val3.minutes, val3.seconds ? val3.seconds : 0, 0);
-                                    if (val1 >= val2 && val1 < val3) fl++;
-                                }
-                                break;
-                            case 'less':
-                                if (['int', 'float', 'money', 'currency', 'percent'].indexOf(search.type) != -1) {
-                                    if (parseFloat(obj.parseField(rec, search.field)) <= parseFloat(sdata.value)) fl++;
-                                }
-                                else if (search.type == 'date') {
-                                    var tmp  = getDateField(rec, search);
-                                    var val1 = w2utils.formatDate(tmp, 'yyyy-mm-dd');
-                                    var val2 = w2utils.formatDate(w2utils.isDate(val2, w2utils.settings.dateFormat, true),  'yyyy-mm-dd');
-                                    if (val1 <= val2) fl++;
-                                }
-                                else if (search.type == 'time') {
-                                    var tmp  = getTimeField(rec, search);
-                                    var val1 = w2utils.formatTime(tmp, 'hh24:mi');
-                                    var val2 = w2utils.formatTime(val2, 'hh24:mi');
-                                    if (val1 <= val2) fl++;
-                                }
-                                break;
-                            case 'more':
-                                if (['int', 'float', 'money', 'currency', 'percent'].indexOf(search.type) != -1) {
-                                    if (parseFloat(obj.parseField(rec, search.field)) >= parseFloat(sdata.value)) fl++;
-                                }
-                                else if (search.type == 'date') {
-                                    var tmp  = getDateField(rec, search);
-                                    var val1 = w2utils.formatDate(tmp, 'yyyy-mm-dd');
-                                    var val2 = w2utils.formatDate(w2utils.isDate(val2, w2utils.settings.dateFormat, true),  'yyyy-mm-dd');
-                                    if (val1 >= val2) fl++;
-                                }
-                                else if (search.type == 'time') {
-                                    var tmp  = getTimeField(rec, search);
-                                    var val1 = w2utils.formatTime(tmp, 'hh24:mi');
-                                    var val2 = w2utils.formatTime(val2, 'hh24:mi');
-                                    if (val1 >= val2) fl++;
-                                }
-                                break;
-                            case 'in':
-                                var tmp = sdata.value;
-                                if (sdata.svalue) tmp = sdata.svalue;
-                                if (tmp.indexOf(w2utils.isFloat(val1) ? parseFloat(val1) : val1) !== -1) fl++;
-                                if (tmp.indexOf(w2utils.isFloat(val1b) ? parseFloat(val1b) : val1b) !== -1) fl++;
-                                break;
-                            case 'not in':
-                                var tmp = sdata.value;
-                                if (sdata.svalue) tmp = sdata.svalue;
-                                if (tmp.indexOf(w2utils.isFloat(val1) ? parseFloat(val1) : val1) == -1) fl++;
-                                if (tmp.indexOf(w2utils.isFloat(val1b) ? parseFloat(val1b) : val1b) == -1) fl++;
-                                break;
-                            case 'begins':
-                            case 'begins with': // need for back compatib.
-                                if (val1.indexOf(val2) == 0) fl++; // do not hide record
-                                break;
-                            case 'contains':
-                                if (val1.indexOf(val2) >= 0) fl++; // do not hide record
-                                break;
-                            case 'null':
-                                if (obj.parseField(rec, search.field) == null) fl++; // do not hide record
-                                break;
-                            case 'not null':
-                                if (obj.parseField(rec, search.field) != null) fl++; // do not hide record
-                                break;
-                            case 'ends':
-                            case 'ends with': // need for back compatib.
-                                var lastIndex = val1.lastIndexOf(val2);
-                                if (lastIndex !== -1 && lastIndex == val1.length - val2.length) fl++; // do not hide record
-                                break;
-                        }
-                        if (sdata.required || this.last.logic == 'AND') {       /* required field */
-                            andTot++;
-                            andNb += fl;
-                            if (!fl)
-                                break;                                           /* short circuit evaluation */
-                        } else {
-                            orTot++;
-                            orNb += fl;
-                        }
-                    }
-                    if (andNb == andTot && (!orTot || orNb > 0)) {
+                    var match = searchRecord(rec);
+                    if (match) {
                         if (rec && rec.w2ui)
                             addParent(rec.w2ui.parent_recid);
                         this.last.searchIds.push(parseInt(i));
@@ -1055,6 +923,156 @@
                 return (date);                                          /* last resort, parse the string */
             }
 
+            // check if a record (or one of its closed children) matches the search data
+            function searchRecord(rec) {
+                var orNb = 0;
+                var orTot = 0;
+                var andNb = 0;
+                var andTot = 0;
+                for (var j = 0; j < obj.searchData.length; j++) {
+                    var sdata  = obj.searchData[j];
+                    var search = obj.getSearch(sdata.field);
+                    if (sdata  == null) continue;
+                    if (search == null) search = { field: sdata.field, type: sdata.type };
+                    var val1b = obj.parseField(rec, search.field);
+                    var val1 = (val1b !== null && val1b !== undefined &&
+                        (typeof val1b != "object" || val1b.toString != defaultToString)) ?
+                        String(val1b).toLowerCase() : "";  // do not match a bogus string
+                    if (sdata.value != null) {
+                        if (!$.isArray(sdata.value)) {
+                            var val2 = String(sdata.value).toLowerCase();
+                        } else {
+                            var val2 = sdata.value[0];
+                            var val3 = sdata.value[1];
+                        }
+                    }
+                    var fl  = 0;
+                    switch (sdata.operator) {
+                    case 'is':
+                        if (obj.parseField(rec, search.field) == sdata.value) fl++; // do not hide record
+                        // only increment "fl" once -> use "else if"
+                        else if (search.type == 'date') {
+                            var tmp  = (obj.parseField(rec, search.field + '_') instanceof Date ? obj.parseField(rec, search.field + '_') : obj.parseField(rec, search.field));
+                            var val1 = w2utils.formatDate(tmp, 'yyyy-mm-dd');
+                            var val2 = w2utils.formatDate(w2utils.isDate(val2, w2utils.settings.dateFormat, true),  'yyyy-mm-dd');
+                            if (val1 == val2) fl++;
+                        }
+                        // only increment "fl" once -> use "else if"
+                        else if (search.type == 'time') {
+                            var tmp  = (obj.parseField(rec, search.field + '_') instanceof Date ? obj.parseField(rec, search.field + '_') : obj.parseField(rec, search.field));
+                            var val1 = w2utils.formatTime(tmp, 'hh24:mi');
+                            var val2 = w2utils.formatTime(val2, 'hh24:mi');
+                            if (val1 == val2) fl++;
+                        }
+                        break;
+                    case 'between':
+                        if (['int', 'float', 'money', 'currency', 'percent'].indexOf(search.type) != -1) {
+                            if (parseFloat(obj.parseField(rec, search.field)) >= parseFloat(val2) && parseFloat(obj.parseField(rec, search.field)) <= parseFloat(val3)) fl++;
+                        }
+                        if (search.type == 'date') {
+                            var val1 = (obj.parseField(rec, search.field + '_') instanceof Date ? obj.parseField(rec, search.field + '_') : obj.parseField(rec, search.field));
+                            var val2 = w2utils.isDate(val2, w2utils.settings.dateFormat, true);
+                            var val3 = w2utils.isDate(val3, w2utils.settings.dateFormat, true);
+                            if (val3 != null) val3 = new Date(val3.getTime() + 86400000); // 1 day
+                            if (val1 >= val2 && val1 < val3) fl++;
+                        }
+                        if (search.type == 'time') {
+                            var val1 = (obj.parseField(rec, search.field + '_') instanceof Date ? obj.parseField(rec, search.field + '_') : obj.parseField(rec, search.field));
+                            var val2 = w2utils.isTime(val2, true);
+                            var val3 = w2utils.isTime(val3, true);
+                            val2 = (new Date()).setHours(val2.hours, val2.minutes, val2.seconds ? val2.seconds : 0, 0);
+                            val3 = (new Date()).setHours(val3.hours, val3.minutes, val3.seconds ? val3.seconds : 0, 0);
+                            if (val1 >= val2 && val1 < val3) fl++;
+                        }
+                        break;
+                    case 'less':
+                        if (['int', 'float', 'money', 'currency', 'percent'].indexOf(search.type) != -1) {
+                            if (parseFloat(obj.parseField(rec, search.field)) <= parseFloat(sdata.value)) fl++;
+                        }
+                        else if (search.type == 'date') {
+                            var tmp  = (obj.parseField(rec, search.field + '_') instanceof Date ? obj.parseField(rec, search.field + '_') : obj.parseField(rec, search.field));
+                            var val1 = w2utils.formatDate(tmp, 'yyyy-mm-dd');
+                            var val2 = w2utils.formatDate(w2utils.isDate(val2, w2utils.settings.dateFormat, true),  'yyyy-mm-dd');
+                            if (val1 <= val2) fl++;
+                        }
+                        else if (search.type == 'time') {
+                            var tmp  = (obj.parseField(rec, search.field + '_') instanceof Date ? obj.parseField(rec, search.field + '_') : obj.parseField(rec, search.field));
+                            var val1 = w2utils.formatTime(tmp, 'hh24:mi');
+                            var val2 = w2utils.formatTime(val2, 'hh24:mi');
+                            if (val1 <= val2) fl++;
+                        }
+                        break;
+                    case 'more':
+                        if (['int', 'float', 'money', 'currency', 'percent'].indexOf(search.type) != -1) {
+                            if (parseFloat(obj.parseField(rec, search.field)) >= parseFloat(sdata.value)) fl++;
+                        }
+                        else if (search.type == 'date') {
+                            var tmp  = (obj.parseField(rec, search.field + '_') instanceof Date ? obj.parseField(rec, search.field + '_') : obj.parseField(rec, search.field));
+                            var val1 = w2utils.formatDate(tmp, 'yyyy-mm-dd');
+                            var val2 = w2utils.formatDate(w2utils.isDate(val2, w2utils.settings.dateFormat, true),  'yyyy-mm-dd');
+                            if (val1 >= val2) fl++;
+                        }
+                        else if (search.type == 'time') {
+                            var tmp  = (obj.parseField(rec, search.field + '_') instanceof Date ? obj.parseField(rec, search.field + '_') : obj.parseField(rec, search.field));
+                            var val1 = w2utils.formatTime(tmp, 'hh24:mi');
+                            var val2 = w2utils.formatTime(val2, 'hh24:mi');
+                            if (val1 >= val2) fl++;
+                        }
+                        break;
+                    case 'in':
+                        var tmp = sdata.value;
+                        if (sdata.svalue) tmp = sdata.svalue;
+                        if (tmp.indexOf(w2utils.isFloat(val1) ? parseFloat(val1) : val1) !== -1) fl++;
+                        if (tmp.indexOf(w2utils.isFloat(val1b) ? parseFloat(val1b) : val1b) !== -1) fl++;
+                        break;
+                    case 'not in':
+                        var tmp = sdata.value;
+                        if (sdata.svalue) tmp = sdata.svalue;
+                        if (tmp.indexOf(w2utils.isFloat(val1) ? parseFloat(val1) : val1) == -1) fl++;
+                        if (tmp.indexOf(w2utils.isFloat(val1b) ? parseFloat(val1b) : val1b) == -1) fl++;
+                        break;
+                    case 'begins':
+                    case 'begins with': // need for back compatib.
+                        if (val1.indexOf(val2) == 0) fl++; // do not hide record
+                        break;
+                    case 'contains':
+                        if (val1.indexOf(val2) >= 0) fl++; // do not hide record
+                        break;
+                    case 'null':
+                        if (obj.parseField(rec, search.field) == null) fl++; // do not hide record
+                        break;
+                    case 'not null':
+                        if (obj.parseField(rec, search.field) != null) fl++; // do not hide record
+                        break;
+                    case 'ends':
+                    case 'ends with': // need for back compatib.
+                        var lastIndex = val1.lastIndexOf(val2);
+                        if (lastIndex !== -1 && lastIndex == val1.length - val2.length) fl++; // do not hide record
+                        break;
+                    }
+                    if (sdata.required || obj.last.logic == 'AND') {       /* required field */
+                        andTot++;
+                        andNb += fl;
+                        if (!fl)
+                            break;                                           /* short circuit evaluation */
+                    } else {
+                        orTot++;
+                        orNb += fl;
+                    }
+                }
+                if (andNb == andTot && (!orTot || orNb > 0))
+                    return true;
+                if (rec.w2ui && rec.w2ui.children && rec.w2ui.expanded !== true) {
+                    // there are closed children, search them too.
+                    for (var r = 0; r < rec.w2ui.children.length; r++) {
+                        var subRec = rec.w2ui.children[r];
+                        if (searchRecord(subRec))
+                            return true;
+                    }
+                }
+                return false;
+            }
+ 
             // add parents nodes recursively
             function addParent(recid) {
                 if (recid === undefined)
@@ -3673,6 +3691,13 @@
                     if (child.w2ui.children == null) child.w2ui.children = [];
                 });
                 this.records.splice.apply(this.records, [ind + 1, 0].concat(children));
+                this.total += children.length;
+                var url = (typeof this.url != 'object' ? this.url : this.url.get);
+                if (!url) {
+                    this.localSort(true, true);
+                    if (this.searchData.length > 0)
+                        this.localSearch(true);
+                }
                 this.refresh();
                 this.trigger($.extend(edata, { phase: 'after' }));
             } else {
@@ -3751,6 +3776,12 @@
                     end++;
                 }
                 this.records.splice(start, end - start + 1);
+                this.total -= end - start + 1;
+                var url = (typeof this.url != 'object' ? this.url : this.url.get);
+                if (!url) {
+                    if (this.searchData.length > 0)
+                        this.localSearch(true);
+                }
                 this.refresh();
                 obj.trigger($.extend(edata, { phase: 'after' }));
             } else {
@@ -7022,11 +7053,18 @@
         },
 
         prepareData: function () {
+            var obj = this;
+
             // loops thru records and prepares date and time objects
             for (var r = 0; r < this.records.length; r++) {
                 var rec = this.records[r];
-                for (var c = 0; c < this.columns.length; c++) {
-                    var column = this.columns[c];
+                prepareRecord(rec);
+            }
+
+            // prepare date and time objects for the 'rec' record and its closed children
+            function prepareRecord(rec) {
+                for (var c = 0; c < obj.columns.length; c++) {
+                    var column = obj.columns[c];
                     if (rec[column.field] == null || typeof column.render != 'string') continue;
                     // number
                     if (['number', 'int', 'float', 'money', 'currency', 'percent'].indexOf(column.render.split(':')[0])  != -1) {
@@ -7055,6 +7093,14 @@
                             dt.setHours(tmp.getHours(), tmp.getMinutes(), tmp.getSeconds(), 0); // sets hours, min, sec, mills
                             if (!rec[column.field + '_']) rec[column.field + '_'] = dt;
                         }
+                    }
+                }
+
+                if (rec.w2ui && rec.w2ui.children && rec.w2ui.expanded !== true) {
+                    // there are closed children, prepare them too.
+                    for (var r = 0; r < rec.w2ui.children.length; r++) {
+                        var subRec = rec.w2ui.children[r];
+                        prepareRecord(subRec);
                     }
                 }
             }
