@@ -2569,9 +2569,6 @@ w2utils.event = {
                     if (img  == null) img  = null; // img might be undefined
                     if (icon == null) icon = null; // icon might be undefined
                 }
-                if (['radio', 'check'].indexOf(options.type) != -1 && icon == null) {
-                    if (mitem.checked === true) icon = 'w2ui-icon-check'; else icon = 'w2ui-icon-empty';
-                }
                 if (mitem.hidden !== true) {
                     var seld = '';
                     if (sel) {
