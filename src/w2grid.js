@@ -5607,8 +5607,8 @@
                         if (ind == 'start') {
                             var width = 0;
                             for (var i = 0; i < obj.last.colStart; i++) {
-                                if (obj.columns[i].frozen || obj.columns[i].hidden) continue;
-                                width += obj.columns[i] ? parseInt(obj.columns[i].sizeCalculated) : 0;
+                                if (!obj.columns[i] || obj.columns[i].frozen || obj.columns[i].hidden) continue;
+                                width += parseInt(obj.columns[i].sizeCalculated);
                             }
                             $(el).css('width', width + 'px');
                         }
@@ -5619,8 +5619,8 @@
                         if (obj.last.colEnd + 1 < obj.columns.length) {
                             var width = 0;
                             for (var i = obj.last.colEnd + 1; i < obj.columns.length; i++) {
-                                if (obj.columns[i].frozen || obj.columns[i].hidden) continue;
-                                width += obj.columns[i] ? parseInt(obj.columns[i].sizeCalculated) : 0;
+                                if (!obj.columns[i] || obj.columns[i].frozen || obj.columns[i].hidden) continue;
+                                width += parseInt(obj.columns[i].sizeCalculated);
                             }
                             $(el).css('width', width + 'px');
                         } else {
@@ -5653,8 +5653,8 @@
                         if (ind == 'start') {
                             var width = 0;
                             for (var i = 0; i < obj.last.colStart; i++) {
-                                if (obj.columns[i].frozen || obj.columns[i].hidden) continue;
-                                width += obj.columns[i] ? parseInt(obj.columns[i].sizeCalculated) : 0;
+                                if (!obj.columns[i] || obj.columns[i].frozen || obj.columns[i].hidden) continue;
+                                width += parseInt(obj.columns[i].sizeCalculated);
                             }
                             $(el).css('width', width + 'px');
                         }
@@ -5665,8 +5665,8 @@
                         if (obj.last.colEnd + 1 < obj.columns.length) {
                             var width = 0;
                             for (var i = obj.last.colEnd + 1; i < obj.columns.length; i++) {
-                                if (obj.columns[i].frozen || obj.columns[i].hidden) continue;
-                                width += obj.columns[i] ? parseInt(obj.columns[i].sizeCalculated) : 0;
+                                if (!obj.columns[i] || obj.columns[i].frozen || obj.columns[i].hidden) continue;
+                                width += parseInt(obj.columns[i].sizeCalculated);
                             }
                             $(el).css('width', width + 'px');
                         } else {
@@ -5688,8 +5688,8 @@
                         if (ind == 'start') {
                             var width = 0;
                             for (var i = 0; i < obj.last.colStart; i++) {
-                                if (obj.columns[i].frozen || obj.columns[i].hidden) continue;
-                                width += obj.columns[i] ? parseInt(obj.columns[i].sizeCalculated) : 0;
+                                if (!obj.columns[i] || obj.columns[i].frozen || obj.columns[i].hidden) continue;
+                                width += parseInt(obj.columns[i].sizeCalculated);
                             }
                             $(el).css('width', width + 'px');
                         }
