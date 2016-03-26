@@ -731,13 +731,8 @@
             // process date fields
             obj.selectionSave();
             obj.prepareData();
-            if (!noReset) {
+            if (!noReset)
                 obj.reset();
-            } else {
-                // still reset vertical scroll
-                this.last.scrollTop   = 0;
-                $('#grid_'+ this.name +'_records').prop('scrollTop',  0);
-            }
             // process sortData
             for (var i = 0; i < this.sortData.length; i++) {
                 var column = this.getColumn(this.sortData[i].field);
