@@ -1678,7 +1678,7 @@ w2utils.formatters = {
     'toggle': function (value, params) {
         return (value ? 'Yes' : '');
     },
-	
+
 	'password': function (value, params) {
     	var ret = "";
 		for (var i=0; i < value.length; i++) {
@@ -2211,7 +2211,7 @@ w2utils.event = {
                         if ($div.css('overflow-y') != 'auto') $div.css('overflow-y', 'auto');
                     }, 10);
                 }
-                if (options.tmp.contentWidth) {
+                if (options.tmp.contentWidth && options.align != 'both') {
                     w = parseInt(options.tmp.contentWidth);
                     div2.width(w);
                     setTimeout(function () {
@@ -2224,26 +2224,27 @@ w2utils.event = {
                     }, 10);
                 }
                 // adjust position
-                var tmp = (w - 17) / 2;
                 var boxLeft  = options.left;
                 var boxWidth = options.width;
                 var tipLeft  = options.tipLeft;
                 // alignment
                 switch (options.align) {
                     case 'both':
-                        boxLeft = 17 + parseInt(options.left);
+                        boxLeft = 17;
                         if (options.width === 0) options.width = w2utils.getSize($(obj), 'width');
                         if (options.maxWidth && options.width > options.maxWidth) options.width = options.maxWidth;
                         break;
                     case 'left':
-                        boxLeft = 17 + parseInt(options.left);
+                        boxLeft = 17;
                         break;
                     case 'right':
-                        boxLeft = w2utils.getSize($(obj), 'width') - w + 14 + parseInt(options.left);
+                        boxLeft = w2utils.getSize($(obj), 'width') - w + 10;
                         tipLeft = w - 40;
                         break;
                 }
                 if (w === 30 && !boxWidth) boxWidth = 30; else boxWidth = (options.width ? options.width : 'auto');
+                var tmp = (w - 17) / 2;
+                if (boxWidth != 'auto') tmp = (boxWidth - 17) / 2;
                 if (tmp < 25) {
                     boxLeft = 25 - tmp;
                     tipLeft = Math.floor(tmp);
@@ -3103,7 +3104,7 @@ w2utils.event = {
             // "list"    : ['is', 'null:is null', 'not null:is not null'],
             // "enum"    : ['in', 'not in', 'null:is null', 'not null:is not null']
         },
-        
+
         operatorsMap: {
             "text"         : "text",
             "int"          : "number",
@@ -3126,7 +3127,7 @@ w2utils.event = {
             "checkbox"     : "list",
             "toggle"       : "list"
         },
-        
+
         // events
         onAdd              : null,
         onEdit             : null,
@@ -3507,8 +3508,9 @@ w2utils.event = {
             // process date fields
             obj.selectionSave();
             obj.prepareData();
-            if (!noReset)
+            if (!noReset) {
                 obj.reset();
+            }
             // process sortData
             for (var i = 0; i < this.sortData.length; i++) {
                 var column = this.getColumn(this.sortData[i].field);
@@ -6719,6 +6721,9 @@ w2utils.event = {
             if (!url) {
                 this.localSort(true, true);
                 if (this.searchData.length > 0) this.localSearch(true);
+                // reset vertical scroll
+                this.last.scrollTop = 0;
+                $('#grid_'+ this.name +'_records').prop('scrollTop',  0);
                 // event after
                 this.trigger($.extend(edata, { phase: 'after' }));
                 this.refresh();
@@ -15175,17 +15180,19 @@ var w2prompt = function (label, title, callBack) {
             }
             if (['enum', 'file'].indexOf(this.type) != -1) {
                 var html = '';
-                for (var s in selected) {
-                    var it  = selected[s];
-                    var ren = '';
-                    if (typeof options.renderItem == 'function') {
-                        ren = options.renderItem(it, s, '<div class="w2ui-list-remove" title="'+ w2utils.lang('Remove') +'" index="'+ s +'">&#160;&#160;</div>');
-                    } else {
-                        ren = '<div class="w2ui-list-remove" title="'+ w2utils.lang('Remove') +'" index="'+ s +'">&#160;&#160;</div>'+
-                              (obj.type == 'enum' ? it.text : it.name + '<span class="file-size"> - '+ w2utils.formatSize(it.size) +'</span>');
-                    }
-                    html += '<li index="'+ s +'" style="max-width: '+ parseInt(options.maxWidth) + 'px; '+ (it.style ? it.style : '') +'">'+
-                            ren +'</li>';
+                if (selected) {
+                   for (var s = 0; s < selected.length; s++) {
+                       var it  = selected[s];
+                       var ren = '';
+                       if (typeof options.renderItem == 'function') {
+                           ren = options.renderItem(it, s, '<div class="w2ui-list-remove" title="'+ w2utils.lang('Remove') +'" index="'+ s +'">&#160;&#160;</div>');
+                       } else {
+                           ren = '<div class="w2ui-list-remove" title="'+ w2utils.lang('Remove') +'" index="'+ s +'">&#160;&#160;</div>'+
+                                 (obj.type == 'enum' ? it.text : it.name + '<span class="file-size"> - '+ w2utils.formatSize(it.size) +'</span>');
+                       }
+                       html += '<li index="'+ s +'" style="max-width: '+ parseInt(options.maxWidth) + 'px; '+ (it.style ? it.style : '') +'">'+
+                               ren +'</li>';
+                   }
                 }
                 var div = obj.helpers.multi;
                 var ul  = div.find('ul');
@@ -16661,7 +16668,7 @@ var w2prompt = function (label, title, callBack) {
                 $(obj.el).data('tmp', tmp);
                 pr = parseInt($(obj.el).css('padding-right'), 10);
                 if (obj.options.arrows) {
-                    // remove if already displaed
+                    // remove if already displayed
                     if (obj.helpers.arrows) $(obj.helpers.arrows).remove();
                     // add fresh
                     $(obj.el).after(
@@ -16961,10 +16968,13 @@ var w2prompt = function (label, title, callBack) {
             var size = 0;
             var cnt  = 0;
             var err;
-            for (var s in selected) {
-                // check for dups
-                if (selected[s].name == file.name && selected[s].size == file.size) return;
-                size += selected[s].size; cnt++;
+            if (selected) {
+                for (var s = 0; s < selected.length; s++) {
+                   // check for dups
+                   if (selected[s].name == file.name && selected[s].size == file.size) return;
+                   size += selected[s].size;
+                   cnt++;
+               }
             }
             // trigger event
             var edata = obj.trigger({ phase: 'before', type: 'add', target: obj.el, file: newItem, total: cnt, totalSize: size });
