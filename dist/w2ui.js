@@ -2884,6 +2884,7 @@ w2utils.event = {
 *   - added noReset option to localSort()
 *   - onColumnSelect
 *   - need to update PHP example
+*   - added scrollToColumn(field)
 *
 ************************************************************************/
 
@@ -3183,8 +3184,12 @@ w2utils.event = {
             var url = (typeof this.url != 'object' ? this.url : this.url.get);
             if (!url) {
                 this.total = this.records.length;
-                this.localSort(false, !first);
+                this.localSort(false, true);
                 this.localSearch();
+                // do not call this.refresh(), this is unnecessary, heavy, and messes with the toolbar.
+                this.refreshBody();
+                this.resizeRecords();
+                return added;
             }
             this.refresh(); // ??  should it be reload?
             return added;
@@ -3291,7 +3296,7 @@ w2utils.event = {
             }
             var url = (typeof this.url != 'object' ? this.url : this.url.get);
             if (!url) {
-                this.localSort();
+                this.localSort(false, true);
                 this.localSearch();
             }
             this.refresh();
@@ -3496,7 +3501,7 @@ w2utils.event = {
             return null;
         },
 
-        localSort: function (silent, noReset) {
+        localSort: function (silent, noResetRefresh) {
             var url = (typeof this.url != 'object' ? this.url : this.url.get);
             if (url) {
                 console.log('ERROR: grid.localSort can only be used on local data source, grid.url should be empty.');
@@ -3508,7 +3513,7 @@ w2utils.event = {
             // process date fields
             obj.selectionSave();
             obj.prepareData();
-            if (!noReset) {
+            if (!noResetRefresh) {
                 obj.reset();
             }
             // process sortData
@@ -3533,7 +3538,7 @@ w2utils.event = {
             });
             cleanupPaths();
 
-            obj.selectionRestore();
+            obj.selectionRestore(noResetRefresh);
             time = (new Date()).getTime() - time;
             if (silent !== true && obj.show.statusSort) {
                 setTimeout(function () {
@@ -7045,43 +7050,9 @@ w2utils.event = {
                 el.val(val);
             }
 
-            // -- separate summary
-            var tmp = this.find({ 'w2ui.summary': true }, true);
-            if (tmp.length > 0) {
-                this.summary = [];
-                for (var t = 0; t < tmp.length; t++) this.summary.push(this.records[tmp[t]]);
-                for (var t = tmp.length-1; t >= 0; t--) this.records.splice(tmp[t], 1);
-            }
-
             // -- body
-            obj.scroll(); // need to calculate virtual scolling for columns
-            var recHTML  = this.getRecordsHTML();
-            var colHTML  = this.getColumnsHTML();
-            var bodyHTML =
-                '<div id="grid_'+ this.name +'_frecords" class="w2ui-grid-frecords" style="margin-bottom: '+ (w2utils.scrollBarSize() - 1) +'px;">'+
-                    recHTML[0] +
-                '</div>'+
-                '<div id="grid_'+ this.name +'_records" class="w2ui-grid-records" onscroll="w2ui[\''+ this.name +'\'].scroll(event);">' +
-                    recHTML[1] +
-                '</div>'+
-                '<div id="grid_'+ this.name +'_scroll1" class="w2ui-grid-scroll1" style="height: '+ w2utils.scrollBarSize() +'px"></div>'+
-                // Columns need to be after to be able to overlap
-                '<div id="grid_'+ this.name +'_fcolumns" class="w2ui-grid-fcolumns">'+
-                '    <table><tbody>'+ colHTML[0] +'</tbody></table>'+
-                '</div>'+
-                '<div id="grid_'+ this.name +'_columns" class="w2ui-grid-columns">'+
-                '    <table><tbody>'+ colHTML[1] +'</tbody></table>'+
-                '</div>';
-            $('#grid_'+ this.name +'_body').html(bodyHTML);
-            // show summary records
-            if (this.summary.length > 0) {
-                var sumHTML = this.getSummaryHTML();
-                $('#grid_'+ this.name +'_fsummary').html(sumHTML[0]).show();
-                $('#grid_'+ this.name +'_summary').html(sumHTML[1]).show();
-            } else {
-                $('#grid_'+ this.name +'_fsummary').hide();
-                $('#grid_'+ this.name +'_summary').hide();
-            }
+            obj.refreshBody();
+            
             // -- footer
             if (this.show.footer) {
                 $('#grid_'+ this.name +'_footer').html(this.getFooterHTML()).show();
@@ -7146,6 +7117,47 @@ w2utils.event = {
                 obj.last.columnDrag.remove();
             }
             return (new Date()).getTime() - time;
+        },
+
+        // private API
+        refreshBody: function () {
+            // -- separate summary
+            var tmp = this.find({ 'w2ui.summary': true }, true);
+            if (tmp.length > 0) {
+                this.summary = [];
+                for (var t = 0; t < tmp.length; t++) this.summary.push(this.records[tmp[t]]);
+                for (var t = tmp.length-1; t >= 0; t--) this.records.splice(tmp[t], 1);
+            }
+
+            // -- body
+            this.scroll(); // need to calculate virtual scolling for columns
+            var recHTML  = this.getRecordsHTML();
+            var colHTML  = this.getColumnsHTML();
+            var bodyHTML =
+                '<div id="grid_'+ this.name +'_frecords" class="w2ui-grid-frecords" style="margin-bottom: '+ (w2utils.scrollBarSize() - 1) +'px;">'+
+                    recHTML[0] +
+                '</div>'+
+                '<div id="grid_'+ this.name +'_records" class="w2ui-grid-records" onscroll="w2ui[\''+ this.name +'\'].scroll(event);">' +
+                    recHTML[1] +
+                '</div>'+
+                '<div id="grid_'+ this.name +'_scroll1" class="w2ui-grid-scroll1" style="height: '+ w2utils.scrollBarSize() +'px"></div>'+
+                // Columns need to be after to be able to overlap
+                '<div id="grid_'+ this.name +'_fcolumns" class="w2ui-grid-fcolumns">'+
+                '    <table><tbody>'+ colHTML[0] +'</tbody></table>'+
+                '</div>'+
+                '<div id="grid_'+ this.name +'_columns" class="w2ui-grid-columns">'+
+                '    <table><tbody>'+ colHTML[1] +'</tbody></table>'+
+                '</div>';
+            $('#grid_'+ this.name +'_body').html(bodyHTML);
+            // show summary records
+            if (this.summary.length > 0) {
+                var sumHTML = this.getSummaryHTML();
+                $('#grid_'+ this.name +'_fsummary').html(sumHTML[0]).show();
+                $('#grid_'+ this.name +'_summary').html(sumHTML[1]).show();
+            } else {
+                $('#grid_'+ this.name +'_fsummary').hide();
+                $('#grid_'+ this.name +'_summary').hide();
+            }
         },
 
         render: function (box) {
@@ -7920,6 +7932,28 @@ w2utils.event = {
             }
             // event after
             this.trigger($.extend(edata, { phase: 'after' }));
+        },
+
+        scrollToColumn: function (field) {
+            if (field == null)
+                return;
+            var sWidth = 0;
+            var found = false;
+            for (var i = 0; i < this.columns.length; i++) {
+                var col = this.columns[i];
+                if (col.field == field) {
+                    found = true;
+                    break;
+                }
+                if (col.frozen || col.hidden)
+                    continue;
+                var cSize = parseInt(col.sizeCalculated ? col.sizeCalculated : col.size);
+                sWidth += cSize;
+            }
+            if (!found)
+                return;
+            this.last.scrollLeft = sWidth+1;
+            this.scroll();
         },
 
         initToolbar: function () {
@@ -10062,7 +10096,7 @@ w2utils.event = {
             return this.last._selection;
         },
 
-        selectionRestore: function () {
+        selectionRestore: function (noRefresh) {
             var time = (new Date()).getTime();
             this.last.selection = { indexes: [], columns: {} };
             var sel = this.last.selection;
@@ -10083,7 +10117,7 @@ w2utils.event = {
                 }
             }
             delete this.last._selection;
-            this.refresh();
+            if (noRefresh !== true) this.refresh();
             return (new Date()).getTime() - time;
         },
 
