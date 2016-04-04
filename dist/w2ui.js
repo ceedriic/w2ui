@@ -30,6 +30,7 @@ var w2obj = w2obj || {}; // expose object to be able to overwrite default functi
 * == 1.5
 *   - added message
 *   - w2utils.keyboard is removed
+*   - w2tag can be positioned with an array of valid values
 *
 ************************************************/
 
@@ -1243,6 +1244,8 @@ var w2utils = (function ($) {
         var pWidth  = parseInt($(where.box).width());
         var pHeight = parseInt($(where.box).height());
         var titleHeight = parseInt($(where.box).find(where.title).css('height') || 0);
+        if (options.width > pWidth) options.width = pWidth - 10;
+        if (options.height > pHeight - titleHeight) options.height = pHeight - 10 - titleHeight;
         options.originalWidth  = options.width;
         options.originalHeight = options.height;
         if (parseInt(options.width) < 0)   options.width  = pWidth + options.width;
@@ -1265,6 +1268,7 @@ var w2utils = (function ($) {
         var msgCount = $(where.box).find('.w2ui-message').length;
         // remove message
         if ($.trim(options.html) == '' && $.trim(options.body) == '' && $.trim(options.buttons) == '') {
+            if (msgCount == 0) return; // no messages at all
             var $msg = $(where.box).find('#w2ui-message'+ (msgCount-1));
             var options = $msg.data('options') || {};
             // before event
@@ -1276,7 +1280,9 @@ var w2utils = (function ($) {
                 'transform': 'translateY(-' + options.height + 'px)'
             }));
             if (msgCount == 1) {
-                if (this.unlock) this.unlock(150);
+                if (this.unlock) {
+                    if (where.param) this.unlock(where.param, 150); else this.unlock(150);
+                }
             } else {
                 $(where.box).find('#w2ui-message'+ (msgCount-2)).css('z-index', 1500);
             }
@@ -1311,7 +1317,11 @@ var w2utils = (function ($) {
                             (options.width  != null ? 'width: ' + options.width + 'px; left: ' + ((pWidth - options.width) / 2) + 'px;' : 'left: 10px; right: 10px;') +
                             (options.height != null ? 'height: ' + options.height + 'px;' : 'bottom: 6px;') +
                             w2utils.cssPrefix('transition', '.3s', true) + '"' +
-                            (options.hideOnClick === true ? 'onclick="'+ where.path +'.message();"' : '') + '>' +
+                            (options.hideOnClick === true
+                                ? where.param
+                                    ? 'onclick="'+ where.path +'.message(\''+ where.param +'\');"'
+                                    : 'onclick="'+ where.path +'.message();"'
+                                : '') + '>' +
                         '</div>');
             $(where.box).find('#w2ui-message'+ msgCount).data('options', options).data('prev_focus', $(':focus'));
             var display = $(where.box).find('#w2ui-message'+ msgCount).css('display');
@@ -1335,7 +1345,9 @@ var w2utils = (function ($) {
                     }));
                 }, 1);
                 // timer for lock
-                if (msgCount == 0 && this.lock) this.lock();
+                if (msgCount == 0 && this.lock) {
+                    if (where.param) this.lock(where.param); else this.lock();
+                }
                 setTimeout(function() {
                     // has to be on top of lock
                     $(where.box).find('#w2ui-message'+ msgCount).css(w2utils.cssPrefix({ 'transition': '0s' }));
@@ -1436,7 +1448,6 @@ var w2utils = (function ($) {
         if (String(navigator.userAgent).indexOf('MSIE') >= 0) tmp.scrollBarSize  = tmp.scrollBarSize / 2; // need this for IE9+
         return tmp.scrollBarSize;
     }
-
 
     function checkName (params, component) { // was w2checkNameParam
         if (!params || params.name == null) {
@@ -2029,6 +2040,43 @@ w2utils.event = {
                     posClass  = 'w2ui-tag-left';
                     posLeft   = parseInt(offset.left + (options.left ? options.left : 0)) - width - 20;
                     posTop    = parseInt(offset.top + (options.top ? options.top : 0));
+                }
+                else if (Array.isArray(options.position)) {
+                    // try to fit the tag on screen in the order defined in the array
+                    var maxWidth  = window.innerWidth;
+                    var maxHeight = window.innerHeight
+                    for( var i=0; i<options.position.length; i++ ){
+                        var pos = options.position[i];
+                        if(pos == 'right'){
+                            posClass = 'w2ui-tag-right';
+                            posLeft  = parseInt(offset.left + el.offsetWidth + (options.left ? options.left : 0));
+                            posTop   = parseInt(offset.top + (options.top ? options.top : 0));
+                            if(posLeft+width <= maxWidth) break;
+                        }
+                        else if(pos == 'left'){
+                            posClass  = 'w2ui-tag-left';
+                            posLeft   = parseInt(offset.left + (options.left ? options.left : 0)) - width - 20;
+                            posTop    = parseInt(offset.top + (options.top ? options.top : 0));
+                            if(posLeft >= 0) break;
+                        }
+                        else if(pos == 'top'){
+                            posClass  = 'w2ui-tag-top';
+                            posLeft   = parseInt(offset.left + (options.left ? options.left : 0)) - 14;
+                            posTop    = parseInt(offset.top + (options.top ? options.top : 0)) - height - 10;
+                            if(posLeft+width <= maxWidth && posTop >= 0) break;
+                        }
+                        else if(pos == 'bottom'){
+                            posClass  = 'w2ui-tag-bottom';
+                            posLeft   = parseInt(offset.left + (options.left ? options.left : 0)) - 14;
+                            posTop    = parseInt(offset.top + el.offsetHeight + (options.top ? options.top : 0)) + 10;
+                            if(posLeft+width <= maxWidth && posTop+height <= maxHeight) break;
+                        }
+                    }
+                    if (tagBody.data('posClass') !== posClass) {
+                        tagBody.removeClass('w2ui-tag-right w2ui-tag-left w2ui-tag-top w2ui-tag-bottom')
+                            .addClass(posClass)
+                            .data('posClass', posClass);
+                    }
                 }
                 if ($tags.data('position') !== posLeft + 'x' + posTop && skipTransition !== true) {
                     $tags.css(w2utils.cssPrefix({ 'transition': '.2s' })).css({
@@ -2886,6 +2934,7 @@ w2utils.event = {
 *   - need to update PHP example
 *   - added scrollToColumn(field)
 *   - textSearch: 'begins' (default), 'contains', 'is', ...
+*   - added refreshBody
 *
 ************************************************************************/
 
@@ -5732,8 +5781,8 @@ w2utils.event = {
                     width   : 350,
                     height  : 170,
                     body    : '<div class="w2ui-centered">' + w2utils.lang(obj.msgDelete) + '</div>',
-                    buttons : '<button class="w2ui-btn w2ui-btn-red" onclick="w2ui[\''+ this.name +'\'].delete(true)"">Yes</button>'+
-                              '<button class="w2ui-btn" onclick="w2ui[\''+ this.name +'\'].message()">No</button>',
+                    buttons : '<button class="w2ui-btn w2ui-btn-red" onclick="w2ui[\''+ this.name +'\'].delete(true)">' + w2utils.lang('Yes') + '</button>'+
+                              '<button class="w2ui-btn" onclick="w2ui[\''+ this.name +'\'].message()">' + w2utils.lang('No') + '</button>',
                     onOpen: function (event) {
                         var inputs = $(this.box).find('input, textarea, select, button');
                         inputs.off('.message')
@@ -7054,7 +7103,7 @@ w2utils.event = {
 
             // -- body
             obj.refreshBody();
-            
+
             // -- footer
             if (this.show.footer) {
                 $('#grid_'+ this.name +'_footer').html(this.getFooterHTML()).show();
@@ -7121,7 +7170,6 @@ w2utils.event = {
             return (new Date()).getTime() - time;
         },
 
-        // private API
         refreshBody: function () {
             // -- separate summary
             var tmp = this.find({ 'w2ui.summary': true }, true);
@@ -7283,8 +7331,8 @@ w2utils.event = {
                     obj.selectNone();
                     obj.last.move = { type: 'text-select' };
                     obj.last.userSelect = 'text';
-                } else {
-                    if (!obj.multiSelect) return;
+                }
+                else if (obj.multiSelect || obj.reorderRows) {
                     var tmp = event.target;
                     var pos = {
                         x: event.offsetX - 10,
@@ -9848,6 +9896,7 @@ w2utils.event = {
                 state.columns.push({
                     field           : col.field,
                     hidden          : col.hidden ? true : false,
+                    frozen          : col.frozen ? true : false,
                     size            : col.size ? col.size : null,
                     sizeCalculated  : col.sizeCalculated ? col.sizeCalculated : null,
                     sizeOriginal    : col.sizeOriginal ? col.sizeOriginal : null,
@@ -9904,8 +9953,12 @@ w2utils.event = {
                 var sLeft = this.last.scrollLeft;
                 for (var c = 0; c < newState.columns.length; c++) {
                     var tmp = newState.columns[c];
-                    var col = this.getColumn(tmp.field);
-                    if (col) $.extend(col, tmp);
+                    var col_index = this.getColumn(tmp.field, true);
+                    if (col_index !== null) {
+                       $.extend(this.columns[col_index], tmp);
+                       // restore column order from saved state
+                       if (c !== col_index) this.columns.splice(c, 0, this.columns.splice(col_index, 1)[0]);
+                    }
                 }
                 this.sortData.splice(0, this.sortData.length);
                 for (var c = 0; c < newState.sortData.length; c++) this.sortData.push(newState.sortData[c]);
@@ -10161,6 +10214,8 @@ w2utils.event = {
 *   - onResize for the panel
 *   - add more panel title positions (left=rotated, right=rotated, bottom)
 *   - bug: when you assign content before previous transition completed.
+* 1.5 changes
+*   - message method
 *
 ************************************************************************/
 
@@ -10351,6 +10406,44 @@ w2utils.event = {
             obj.resize();
             if (window.navigator.userAgent.indexOf('MSIE') != -1) setTimeout(function () { obj.resize(); }, 100);
             return true;
+        },
+
+        message: function(panel, options) {
+            var obj = this;
+            if (typeof options == 'string') {
+                options = {
+                    width   : (options.length < 300 ? 350 : 550),
+                    height  : (options.length < 300 ? 170: 250),
+                    body    : '<div class="w2ui-centered">' + options + '</div>',
+                    buttons : '<button class="w2ui-btn" onclick="w2ui[\''+ this.name +'\'].message(\''+ panel +'\')">Ok</button>',
+                    onOpen  : function (event) {
+                        setTimeout(function () {
+                            $(this.box).find('.w2ui-btn').focus();
+                        }, 25);
+                    }
+                };
+            }
+            var p   = this.get(panel);
+            var $el = $('#layout_'+ this.name + '_panel_'+ p.type);
+            var oldOverflow = $el.css('overflow');
+            var oldOnClose;
+            if (options) {
+                if (options.onClose) oldOnClose = options.onClose;
+                options.onClose = function (event) {
+                    if (typeof oldOnClose == 'function') oldOnClose(event);
+                    event.done(function () {
+                        $('#layout_'+ obj.name + '_panel_'+ p.type).css('overflow', oldOverflow);
+                    });
+                }
+            }
+            $('#layout_'+ this.name + '_panel_'+ p.type).css('overflow', 'hidden');
+            w2utils.message.call(this, {
+                box   : $('#layout_'+ this.name + '_panel_'+ p.type),
+                param : panel,
+                path  : 'w2ui.' + this.name,
+                title : '.w2ui-panel-title:visible',
+                body  : '.w2ui-panel-content'
+            }, options);
         },
 
         load: function (panel, url, transition, onLoad) {
@@ -16887,7 +16980,7 @@ var w2prompt = function (label, title, callBack) {
                         '    <div style="padding: 0px; margin: 0px; display: inline-block" class="w2ui-multi-items">'+
                         '    <ul>'+
                         '        <li style="padding-left: 0px; padding-right: 0px" class="nomouse">'+
-                        '            <input type="text" style="width: 20px; margin: -3px 0 0; padding: 2px 0; border-color: white" autocomplete="off" '+ ($(obj.el).prop('readonly') ? 'readonly="readonly"': '') + '/>'+
+                        '            <input type="text" style="width: 20px; margin: -3px 0 0; padding: 2px 0; border-color: white" autocomplete="off"' + ($(obj.el).prop('readonly') ? ' readonly="readonly"': '') + ($(obj.el).prop('disabled') ? ' disabled="disabled"': '') + '/>'+
                         '        </li>'+
                         '    </ul>'+
                         '    </div>'+
@@ -16896,7 +16989,7 @@ var w2prompt = function (label, title, callBack) {
             if (obj.type == 'file') {
                 html =  '<div class="w2ui-field-helper w2ui-list" style="'+ margin + '; box-sizing: border-box">'+
                         '   <div style="position: absolute; left: 0px; right: 0px; top: 0px; bottom: 0px;">'+
-                        '       <input class="file-input" type="file" style="width: 100%; height: 100%; opacity: 0;" name="attachment" multiple tabindex="-1"/>'+
+                        '       <input class="file-input" type="file" style="width: 100%; height: 100%; opacity: 0;" name="attachment" multiple tabindex="-1"' + ($(obj.el).prop('readonly') ? ' readonly="readonly"': '') + ($(obj.el).prop('disabled') ? ' disabled="disabled"': '') + '/>'+
                         '   </div>'+
                         '    <div style="position: absolute; padding: 0px; margin: 0px; display: inline-block" class="w2ui-multi-items">'+
                         '        <ul><li style="padding-left: 0px; padding-right: 0px" class="nomouse"></li></ul>'+

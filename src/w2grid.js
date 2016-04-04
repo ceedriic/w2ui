@@ -109,6 +109,7 @@
 *   - need to update PHP example
 *   - added scrollToColumn(field)
 *   - textSearch: 'begins' (default), 'contains', 'is', ...
+*   - added refreshBody
 *
 ************************************************************************/
 
@@ -2955,8 +2956,8 @@
                     width   : 350,
                     height  : 170,
                     body    : '<div class="w2ui-centered">' + w2utils.lang(obj.msgDelete) + '</div>',
-                    buttons : '<button class="w2ui-btn w2ui-btn-red" onclick="w2ui[\''+ this.name +'\'].delete(true)"">Yes</button>'+
-                              '<button class="w2ui-btn" onclick="w2ui[\''+ this.name +'\'].message()">No</button>',
+                    buttons : '<button class="w2ui-btn w2ui-btn-red" onclick="w2ui[\''+ this.name +'\'].delete(true)">' + w2utils.lang('Yes') + '</button>'+
+                              '<button class="w2ui-btn" onclick="w2ui[\''+ this.name +'\'].message()">' + w2utils.lang('No') + '</button>',
                     onOpen: function (event) {
                         var inputs = $(this.box).find('input, textarea, select, button');
                         inputs.off('.message')
@@ -4277,7 +4278,7 @@
 
             // -- body
             obj.refreshBody();
-            
+
             // -- footer
             if (this.show.footer) {
                 $('#grid_'+ this.name +'_footer').html(this.getFooterHTML()).show();
@@ -4344,7 +4345,6 @@
             return (new Date()).getTime() - time;
         },
 
-        // private API
         refreshBody: function () {
             // -- separate summary
             var tmp = this.find({ 'w2ui.summary': true }, true);
@@ -4506,8 +4506,8 @@
                     obj.selectNone();
                     obj.last.move = { type: 'text-select' };
                     obj.last.userSelect = 'text';
-                } else {
-                    if (!obj.multiSelect) return;
+                }
+                else if (obj.multiSelect || obj.reorderRows) {
                     var tmp = event.target;
                     var pos = {
                         x: event.offsetX - 10,
@@ -7071,6 +7071,7 @@
                 state.columns.push({
                     field           : col.field,
                     hidden          : col.hidden ? true : false,
+                    frozen          : col.frozen ? true : false,
                     size            : col.size ? col.size : null,
                     sizeCalculated  : col.sizeCalculated ? col.sizeCalculated : null,
                     sizeOriginal    : col.sizeOriginal ? col.sizeOriginal : null,
@@ -7127,8 +7128,12 @@
                 var sLeft = this.last.scrollLeft;
                 for (var c = 0; c < newState.columns.length; c++) {
                     var tmp = newState.columns[c];
-                    var col = this.getColumn(tmp.field);
-                    if (col) $.extend(col, tmp);
+                    var col_index = this.getColumn(tmp.field, true);
+                    if (col_index !== null) {
+                       $.extend(this.columns[col_index], tmp);
+                       // restore column order from saved state
+                       if (c !== col_index) this.columns.splice(c, 0, this.columns.splice(col_index, 1)[0]);
+                    }
                 }
                 this.sortData.splice(0, this.sortData.length);
                 for (var c = 0; c < newState.sortData.length; c++) this.sortData.push(newState.sortData[c]);
