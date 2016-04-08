@@ -1954,7 +1954,7 @@ w2utils.event = {
                 if ($(el).length > 0) originalCSS = $(el)[0].style.cssText;
                 // insert
                 $('body').append(
-                    '<div onclick="event.stopPropagation()" id="w2ui-tag-'+ origID +'" '+
+                    '<div onclick="event.stopPropagation()" style="display:none;" id="w2ui-tag-'+ origID +'" '+
                     '       class="w2ui-tag '+ ($(el).parents('.w2ui-popup, .w2ui-overlay-popup, .w2ui-message').length > 0 ? 'w2ui-tag-popup' : '') + '">'+
                     '   <div style="margin: -2px 0px 0px -2px; white-space: nowrap;">'+
                     '      <div class="w2ui-tag-body '+ options.className +'" style="'+ (options.style || '') +'">'+ text +'</div>'+
@@ -1966,6 +1966,7 @@ w2utils.event = {
 
             // need time out to allow tag to be rendered
             setTimeout(function () {
+            	$tags.css('display', 'block');
                 if (!$(el).offset()) return;
                 var pos = checkIfMoved(true);
                 if (pos == null) return;
@@ -2935,6 +2936,8 @@ w2utils.event = {
 *   - added scrollToColumn(field)
 *   - textSearch: 'begins' (default), 'contains', 'is', ...
 *   - added refreshBody
+*   - added response.total = -1 (or not present) to indicate that number of records is unknown
+*   - message(.., callBack) - added callBack
 *
 ************************************************************************/
 
@@ -5123,7 +5126,7 @@ w2utils.event = {
                 data     : edata.postData,
                 dataType : 'text'  // expected data type from server
             };
-            if (w2utils.settings.dataType == 'HTTP') {
+           if (w2utils.settings.dataType == 'HTTP') {
                 ajaxOptions.data = (typeof ajaxOptions.data == 'object' ? String($.param(ajaxOptions.data, false)).replace(/%5B/g, '[').replace(/%5D/g, ']') : ajaxOptions.data);
             }
             if (w2utils.settings.dataType == 'HTTPJSON') {
@@ -5225,7 +5228,14 @@ w2utils.event = {
                             message      : w2utils.lang(this.msgNotJSON),
                             responseText : responseText
                         };
-                    } else if (obj.recid && data.records) {
+                    } else if (Array.isArray(data)) {
+                        // if it is plain array, assume these are records
+                        data = {
+                            status  : 'success',
+                            records : data
+                        }
+                    }
+                    if (obj.recid && data.records) {
                         // convert recids
                         for (var i = 0; i < data.records.length; i++) {
                             data.records[i]['recid'] = data.records[i][obj.recid];
@@ -5235,15 +5245,23 @@ w2utils.event = {
                         obj.error(data['message']);
                     } else {
                         if (cmd == 'get') {
+                            if (data.total == null) data.total = -1;
+                            if (data.records.length == this.limit) {
+                                this.last.xhr_hasMore = true;
+                            } else {
+                                this.last.xhr_hasMore = false;
+                                this.total = this.last.xhr_offset + data.records.length;
+                            }
                             if (this.last.xhr_offset == 0) {
                                 this.records = [];
                                 this.summary = [];
                                 if (w2utils.isInt(data.total)) this.total = parseInt(data.total);
                             } else {
-                                if (parseInt(data.total) != parseInt(this.total)) {
-                                    this.message(w2utils.lang(this.msgNeedReload));
-                                    delete this.last.xhr_offset;
-                                    this.reload();
+                                if (data.total != -1 && parseInt(data.total) != parseInt(this.total)) {
+                                    this.message(w2utils.lang(this.msgNeedReload), function () {
+                                        delete this.last.xhr_offset;
+                                        this.reload();
+                                    }.bind(this));
                                     return;
                                 }
                             }
@@ -9276,17 +9294,19 @@ w2utils.event = {
             if (t1 > buffered) t1 = buffered;
             if (t2 >= buffered - 1) t2 = buffered;
             $('#grid_'+ this.name + '_footer .w2ui-footer-right').html(
-                (obj.show.statusRange ? w2utils.formatNumber(this.offset + t1) + '-' + w2utils.formatNumber(this.offset + t2) + ' ' + w2utils.lang('of') + ' ' +    w2utils.formatNumber(this.total) : '') +
-                (url && obj.show.statusBuffered ? ' ('+ w2utils.lang('buffered') + ' '+ w2utils.formatNumber(buffered) + (this.offset > 0 ? ', skip ' + w2utils.formatNumber(this.offset) : '') + ')' : '')
+                (obj.show.statusRange ? w2utils.formatNumber(this.offset + t1) + '-' + w2utils.formatNumber(this.offset + t2) +
+                        (this.total != -1 ? ' ' + w2utils.lang('of') + ' ' +    w2utils.formatNumber(this.total) : '') : '') +
+                (url && obj.show.statusBuffered ? ' ('+ w2utils.lang('buffered') + ' '+ w2utils.formatNumber(buffered) +
+                        (this.offset > 0 ? ', skip ' + w2utils.formatNumber(this.offset) : '') + ')' : '')
             );
             // only for local data source, else no extra records loaded
-            if (!url && (!this.fixedBody || this.total <= this.vs_start)) return;
+            if (!url && (!this.fixedBody || (this.total != -1 && this.total <= this.vs_start))) return;
             // regular processing
             var start   = Math.floor(records[0].scrollTop / this.recordHeight) - this.last.show_extra;
             var end     = start + Math.floor(records.height() / this.recordHeight) + this.last.show_extra * 2 + 1;
             // var div  = start - this.last.range_start;
             if (start < 1) start = 1;
-            if (end > this.total) end = this.total;
+            if (end > this.total && this.total != -1) end = this.total;
             var tr1  = records.find('#grid_'+ this.name +'_rec_top');
             var tr2  = records.find('#grid_'+ this.name +'_rec_bottom');
             var tr1f = frecords.find('#grid_'+ this.name +'_frec_top');
@@ -9368,7 +9388,7 @@ w2utils.event = {
             // load more if needed
             var s = Math.floor(records[0].scrollTop / this.recordHeight);
             var e = s + Math.floor(records.height() / this.recordHeight);
-            if (e + 10 > buffered && this.last.pull_more !== true && buffered < this.total - this.offset) {
+            if (e + 10 > buffered && this.last.pull_more !== true && (buffered < this.total - this.offset || (this.total == -1 && this.last.xhr_hasMore))) {
                 if (this.autoLoad === true) {
                     this.last.pull_more = true;
                     this.last.xhr_offset += this.limit;
@@ -9385,13 +9405,13 @@ w2utils.event = {
                                 $(this).find('td').html('<div><div style="width: 20px; height: 20px;" class="w2ui-spinner"></div></div>');
                             });
                     }
-                    if (more.find('td').text().indexOf('Load') == -1) {
+                    if (more.find('td .w2ui-spinner').length > 0 || more.find('td').text().indexOf('Load') == -1) {
                         more.find('td').html('<div>'+ w2utils.lang('Load') + ' ' + obj.limit + ' ' + w2utils.lang('More') + '...</div>');
                     }
                 }
             }
             // check for grid end
-            if (buffered >= this.total - this.offset) $('#grid_'+ this.name +'_rec_more, #grid_'+ this.name +'_frec_more').hide();
+            if (buffered >= this.total - this.offset && this.total != -1) $('#grid_'+ this.name +'_rec_more, #grid_'+ this.name +'_frec_more').hide();
 
             function markSearch() {
                 // mark search
@@ -10113,7 +10133,7 @@ w2utils.event = {
                 // colspan
                 var tmp  = this.records[ind].w2ui;
                 var col  = this.columns[col_ind];
-                var span = (tmp && tmp.colspan && !isNaN(tmp.colspan[col.field]) ? parseInt(tmp.colspan[col.field]) : 1);
+                var span = (tmp && tmp.colspan && col != null && !isNaN(tmp.colspan[col.field]) ? parseInt(tmp.colspan[col.field]) : 1);
                 if (span == 0) {
                     ret = this.nextRow(ind, col_ind);
                 } else {
@@ -10136,7 +10156,7 @@ w2utils.event = {
                 // colspan
                 var tmp  = this.records[ind].w2ui;
                 var col  = this.columns[col_ind];
-                var span = (tmp && tmp.colspan && !isNaN(tmp.colspan[col.field]) ? parseInt(tmp.colspan[col.field]) : 1);
+                var span = (tmp && tmp.colspan && col != null && !isNaN(tmp.colspan[col.field]) ? parseInt(tmp.colspan[col.field]) : 1);
                 if (span == 0) {
                     ret = this.prevRow(ind, col_ind);
                 } else {
@@ -10176,7 +10196,7 @@ w2utils.event = {
             return (new Date()).getTime() - time;
         },
 
-        message: function(options) {
+        message: function(options, callBack) {
             if (typeof options == 'string') {
                 options = {
                     width   : (options.length < 300 ? 350 : 550),
@@ -10187,6 +10207,9 @@ w2utils.event = {
                         setTimeout(function () {
                             $(this.box).find('.w2ui-btn').focus();
                         }, 25);
+                    },
+                    onClose: function (even) {
+                        if (typeof callBack == 'function') callBack();
                     }
                 };
             }
