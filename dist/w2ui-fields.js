@@ -146,7 +146,7 @@ var w2utils = (function ($) {
     }
 
     function isEmail (val) {
-        var email = /^[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
+        var email = /^[a-zA-Z0-9._%-+]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
         return email.test(val);
     }
 
@@ -1278,7 +1278,7 @@ var w2utils = (function ($) {
             $msg.css(w2utils.cssPrefix({
                 'transition': '0.15s',
                 'transform': 'translateY(-' + options.height + 'px)'
-            }));
+            })).addClass('w2ui-closing');
             if (msgCount == 1) {
                 if (this.unlock) {
                     if (where.param) this.unlock(where.param, 150); else this.unlock(150);
@@ -2869,6 +2869,7 @@ w2utils.event = {
 *   - options.transarent = t/f for color
 *   - remote data is not compatible with grid
 *   - options.recId, options.recText - to define custom id and text for remove data, can be string or function
+*   - options.readContent - for file type
 *
 ************************************************************************/
 
@@ -3252,6 +3253,7 @@ w2utils.event = {
                         maxHeight     : 350,      // max height for input control to grow
                         maxDropHeight : 350,      // max height for drop down menu
                         maxDropWidth  : null,     // if null then auto set
+                        readContent   : true,     // if true, it will readAsDataURL content of the file
                         silent        : true,
                         renderItem    : null,     // render selected item
                         style         : '',       // style for container div
@@ -5260,7 +5262,7 @@ w2utils.event = {
             }
             selected.push(newItem);
             // read file as base64
-            if (typeof FileReader !== "undefined") {
+            if (typeof FileReader !== "undefined" && options.readContent === true) {
                 var reader = new FileReader();
                 // need a closure
                 reader.onload = (function () {
