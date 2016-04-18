@@ -51,6 +51,7 @@
 *   - added focus(), blur(), onFocus, onBlur
 *   - search.simple - if false, will not show up in simple search
 *   - search.operator - default operator to use with search field
+*   - search.operators - array of operators for the serach
 *   - search.hidden - could not be clearned by the user
 *   - search.value - only for hidden searches
 *   - if .search(val) - search all fields
@@ -79,6 +80,7 @@
 *   - implemented showBubble
 *   - added show.searchAll
 *   - added w2grid.operators
+*   - added w2grid.operatorsMap
 *   - move events into prototype
 *   - move rec.summary, rec.style, rec.editable -> into rec.w2ui.summary, rec.w2ui.style, rec.w2ui.editable
 *   - record: {
@@ -323,12 +325,12 @@
         },
 
         operators: { // for search fields
-            "text"    : [['is'], ['begins'], ['contains'], ['ends']],
-            "number"  : [['is'], ['between'], ['less', 'less than'], ['more', 'more than']],
-            "date"    : [['is'], ['between'], ['less', 'before'], ['more', 'after']],
-            "list"    : [['is']],
-            "hex"     : [['is'], ['between']],
-            "enum"    : [['in'], ['not in']]
+            "text"    : ['is', 'begins', 'contains', 'ends'],
+            "number"  : ['is', 'between', { oper: 'less', text: 'less than'}, { oper: 'more', text: 'more than' }],
+            "date"    : ['is', 'between', { oper: 'less', text: 'before'}, { oper: 'more', text: 'after' }],
+            "list"    : ['is'],
+            "hex"     : ['is', 'between'],
+            "enum"    : ['in', 'not in']
             // -- all posible
             // "text"    : ['is', 'begins', 'contains', 'ends'],
             // "number"  : ['is', 'between', 'less:less than', 'more:more than', 'null:is null', 'not null:is not null'],
@@ -344,8 +346,8 @@
             "currency"     : "number",
             "percent"      : "number",
             "hex"          : "hex",
-            "alphanumeric" : "number",
-            "color"        : "list",
+            "alphanumeric" : "text",
+            "color"        : "text",
             "date"         : "date",
             "time"         : "date",
             "datetime"     : "date",
@@ -601,7 +603,8 @@
                     }
                 }
             }
-            this.refresh();
+            this.refreshBody();
+            this.resizeRecords();
             return effected;
         },
 
@@ -617,7 +620,8 @@
                     }
                 }
             }
-            this.refresh();
+            this.refreshBody();
+            this.resizeRecords();
             return shown;
         },
 
@@ -632,7 +636,8 @@
                     }
                 }
             }
-            this.refresh();
+            this.refreshBody();
+            this.resizeRecords();
             return hidden;
         },
 
@@ -2123,8 +2128,10 @@
                 }
                 html += '<tr '+ (w2utils.isIOS ? 'onTouchStart' : 'onClick') +'="w2ui[\''+ this.name +'\'].initAllField(\''+ search.field +'\');'+
                         '      event.stopPropagation(); jQuery(\'#grid_'+ this.name +'_search_all\').w2overlay({ name: \''+ this.name +'-searchFields\' });">'+
-                        '    <td><input type="radio" tabIndex="-1" '+ (search.field == this.last.field ? 'checked="checked"' : '') +'/></td>'+
-                        '    <td>'+ search.caption +'</td>'+
+                        '   <td>'+
+                        '       <span class="w2ui-column-check w2ui-icon-'+ (search.field == this.last.field ? 'check' : 'empty') +'"></span>'+
+                        '   </td>'+
+                        '   <td>'+ search.caption +'</td>'+
                         '</tr>';
             }
             html += "</tbody></table></div>";
@@ -5165,7 +5172,8 @@
                 } else {
                     $el.addClass('w2ui-icon-empty').removeClass('w2ui-icon-check');
                 }
-                this.refresh();
+                this.refreshBody();
+                this.resizeRecords();
             } else {
                 var col = this.getColumn(field);
                 if (col.hidden) {
@@ -5847,7 +5855,7 @@
                 var operator =
                     '<select id="grid_'+ this.name +'_operator_'+ i +'" class="w2ui-input" onclick="event.stopPropagation();"' +
                     '   onchange="w2ui[\''+ this.name + '\'].initOperator(this, '+ i +')">' +
-                        getOpearators(s.type, s.operators) +
+                        getOperators(s.type, s.operators) +
                     '</select>';
 
                 html += '<tr>'+
@@ -5900,16 +5908,24 @@
                     '</tr></tbody></table>';
             return html;
 
-            function getOpearators(type, fieldOperators) {
+            function getOperators(type, fieldOperators) {
                 var html = '';
                 var operators = obj.operators[obj.operatorsMap[type]];
                 if (fieldOperators != null) operators = fieldOperators;
                 for (var i = 0; i < operators.length; i++) {
-                    var oper = operators[i][0];
+                    var oper = operators[i];
                     var text = oper;
-                    if (operators[i][1]) text = operators[i][1];
-                    html += '<option value="'+ oper +'">'+ w2utils.lang(text) +'</option>';
+                    if (Array.isArray(oper)) {
+                        text = oper[1];
+                        oper = oper[0];
+                        if (text == null) text = oper;
+                    } else if ($.isPlainObject(oper)) {
+                        text = oper.text;
+                        oper = oper.oper;
+                    }
+                    html += '<option value="'+ oper +'">'+ w2utils.lang(text) +'</option>\n';
                 }
+                console.log(html);
                 return html;
             }
         },
@@ -5945,13 +5961,20 @@
             var obj = this;
             // init searches
             for (var s = 0; s < this.searches.length; s++) {
-                var search   = this.searches[s];
-                var sdata    = this.getSearchData(search.field);
-                search.type = String(search.type).toLowerCase();
-                var operator = obj.operators[obj.operatorsMap[search.type]][0][0];
+                var search    = this.searches[s];
+                var sdata     = this.getSearchData(search.field);
+                search.type   = String(search.type).toLowerCase();
+                var operators = obj.operators[obj.operatorsMap[search.type]];
+                if (search.operators) operators = search.operators;
+                var operator  = operators[0]; // default operator
+                if ($.isPlainObject(operator)) operator = operator.oper;
                 if (typeof search.options != 'object') search.options = {};
-                for (var i = 0; i < obj.operators[obj.operatorsMap[search.type]].length; i++) {
-                    if (search.operator == obj.operators[obj.operatorsMap[search.type]][i][0] || search.operator == 'null' ||  search.operator == 'not null') {
+                if (search.type == 'text') operator = 'begins'; // default operator for text
+                // only accept search.operator if it is valid
+                for (var i = 0; i < operators.length; i++) {
+                    var oper = operators[i];
+                    if ($.isPlainObject(oper)) oper = oper.oper;
+                    if (search.operator == oper) {
                         operator = search.operator;
                         break;
                     }
@@ -6305,9 +6328,9 @@
 
         getSummaryHTML: function () {
             if (this.summary.length == 0) return;
-            var rec_html = '';
-            var html1 = '<table><tbody>';
-            var html2 = '<table><tbody>';
+            var rec_html = this.getRecordHTML(-1, 0); // need this in summary too for colspan to work properly
+            var html1 = '<table><tbody>' + rec_html[0];
+            var html2 = '<table><tbody>' + rec_html[1];
             for (var i = 0; i < this.summary.length; i++) {
                 rec_html = this.getRecordHTML(i, i+1, true);
                 html1 += rec_html[0];
