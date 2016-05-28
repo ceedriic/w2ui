@@ -30,6 +30,7 @@ var w2obj = w2obj || {}; // expose object to be able to overwrite default functi
 *   - added message
 *   - w2utils.keyboard is removed
 *   - w2tag can be positioned with an array of valid values
+*   - decodeTags
 *
 ************************************************/
 
@@ -77,6 +78,7 @@ var w2utils = (function ($) {
         formatDateTime  : formatDateTime,
         stripTags       : stripTags,
         encodeTags      : encodeTags,
+        decodeTags      : decodeTags,
         escapeId        : escapeId,
         base64encode    : base64encode,
         base64decode    : base64decode,
@@ -214,12 +216,13 @@ var w2utils = (function ($) {
     function isTime (val, retTime) {
         // Both formats 10:20pm and 22:20
         if (val == null) return false;
-        var max, pm;
+        var max, am, pm;
         // -- process american format
         val = String(val);
         val = val.toUpperCase();
+        am = val.indexOf('AM') >= 0;
         pm = val.indexOf('PM') >= 0;
-        var ampm = (pm || val.indexOf('AM') >= 0);
+        var ampm = (pm || am);
         if (ampm) max = 12; else max = 24;
         val = val.replace('AM', '').replace('PM', '');
         val = $.trim(val);
@@ -237,8 +240,8 @@ var w2utils = (function ($) {
         if (ampm && tmp.length === 1 && h === 0) { return false; }
 
         if (retTime === true) {
-            if (pm && h !== 12)  h += 12;   // 12:00pm - is noon
-            if (!pm && h === 12) h += 12;   // 12:00am - is midnight
+            if (pm && h !== 12) h += 12;   // 12:00pm - is noon
+            if (am && h === 12) h += 12;   // 12:00am - is midnight
             return {
                 hours: h,
                 minutes: m,
@@ -519,6 +522,28 @@ var w2utils = (function ($) {
         return html;
     }
 
+    function decodeTags (html) {
+        if (html == null) return html;
+        switch (typeof html) {
+            case 'number':
+                break;
+            case 'string':
+                html = String(html).replace(/&gt;/g, ">").replace(/&lt;/g, "<").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+                break;
+            case 'object':
+                // does not modify original object, but creates a copy
+                if (Array.isArray(html)) {
+                    html = $.extend(true, [], html);
+                    for (var i = 0; i < html.length; i++) html[i] = this.decodeTags(html[i]);
+                }  else {
+                    html = $.extend(true, {}, html);
+                    for (var i in html) html[i] = this.decodeTags(html[i]);
+                }
+                break;
+        }
+        return html;
+    }
+
     function escapeId (id) {
         if (id === '' || id == null) return '';
         return String(id).replace(/([;&,\.\+\*\~'`:"\!\^#$%@\[\]\(\)=<>\|\/? {}\\])/g, '\\$1');
@@ -629,7 +654,7 @@ var w2utils = (function ($) {
     }
 
     function md5(input) {
-		/*
+        /*
          * Based on http://pajhome.org.uk/crypt/md5
          */
 
@@ -1013,7 +1038,7 @@ var w2utils = (function ($) {
 
         return __pj_crypt_hex_md5(input);
 
-	}
+    }
 
     function transition (div_old, div_new, type, callBack) {
         var width  = $(div_old).width();
@@ -1266,8 +1291,8 @@ var w2utils = (function ($) {
         var head     = $(where.box).find(where.title);
         var msgCount = $(where.box).find('.w2ui-message').length;
         // remove message
-        if ($.trim(options.html) == '' && $.trim(options.body) == '' && $.trim(options.buttons) == '') {
-            if (msgCount == 0) return; // no messages at all
+        if ($.trim(options.html) === '' && $.trim(options.body) === '' && $.trim(options.buttons) === '') {
+            if (msgCount === 0) return; // no messages at all
             var $msg = $(where.box).find('#w2ui-message'+ (msgCount-1));
             var options = $msg.data('options') || {};
             // before event
@@ -1300,7 +1325,7 @@ var w2utils = (function ($) {
 
         } else {
 
-            if ($.trim(options.body) != '' || $.trim(options.buttons) != '') {
+            if ($.trim(options.body) !== '' || $.trim(options.buttons) !== '') {
                 options.html = '<div class="w2ui-message-body">'+ (options.body || '') +'</div>'+
                     '<div class="w2ui-message-buttons">'+ (options.buttons || '') +'</div>';
             }
@@ -1312,7 +1337,7 @@ var w2utils = (function ($) {
             $(where.box).find(where.body)
                 .before('<div id="w2ui-message' + msgCount + '" onmousedown="event.stopPropagation();" '+
                         '   class="w2ui-message" style="display: none; z-index: 1500; ' +
-                            (head.length == 0 ? 'top: 0px;' : 'top: ' + w2utils.getSize(head, 'height') + 'px;') +
+                            (head.length === 0 ? 'top: 0px;' : 'top: ' + w2utils.getSize(head, 'height') + 'px;') +
                             (options.width  != null ? 'width: ' + options.width + 'px; left: ' + ((pWidth - options.width) / 2) + 'px;' : 'left: 10px; right: 10px;') +
                             (options.height != null ? 'height: ' + options.height + 'px;' : 'bottom: 6px;') +
                             w2utils.cssPrefix('transition', '.3s', true) + '"' +
@@ -1344,7 +1369,7 @@ var w2utils = (function ($) {
                     }));
                 }, 1);
                 // timer for lock
-                if (msgCount == 0 && this.lock) {
+                if (msgCount === 0 && this.lock) {
                     if (where.param) this.lock(where.param); else this.lock();
                 }
                 setTimeout(function() {
@@ -1411,7 +1436,7 @@ var w2utils = (function ($) {
         // if the locale is an object, not a string, than we assume it's a
         if(typeof locale !== "string" ) {
             w2utils.settings = $.extend(true, w2utils.settings, locale);
-            return
+            return;
         }
 
         if (locale.length === 5) locale = 'locale/'+ locale +'.json';
@@ -1632,56 +1657,56 @@ w2utils.formatters = {
     },
 
     'date': function (value, params) {
-        if (params == '') params = w2utils.settings.dateFormat;
-        if (value == null || value == 0) return '';
+        if (params === '') params = w2utils.settings.dateFormat;
+        if (value == null || value === 0) return '';
         var dt = w2utils.isDateTime(value, params, true);
-        if (dt == '') dt = w2utils.isDate(value, params, true);
+        if (dt === '') dt = w2utils.isDate(value, params, true);
         return '<span title="'+ dt +'">' + w2utils.formatDate(dt, params) + '</span>';
     },
 
     'datetime': function (value, params) {
-        if (params == '') params = w2utils.settings.datetimeFormat;
-        if (value == null || value == 0) return '';
+        if (params === '') params = w2utils.settings.datetimeFormat;
+        if (value == null || value === 0) return '';
         var dt = w2utils.isDateTime(value, params, true);
-        if (dt == '') dt = w2utils.isDate(value, params, true);
+        if (dt === '') dt = w2utils.isDate(value, params, true);
         return '<span title="'+ dt +'">' + w2utils.formatDateTime(dt, params) + '</span>';
     },
 
     'time': function (value, params) {
-        if (params == '') params = w2utils.settings.timeFormat;
-        if (params == 'h12') params = 'hh:mi pm';
-        if (params == 'h24') params = 'h24:mi';
-        if (value == null || value == 0) return '';
+        if (params === '') params = w2utils.settings.timeFormat;
+        if (params === 'h12') params = 'hh:mi pm';
+        if (params === 'h24') params = 'h24:mi';
+        if (value == null || value === 0) return '';
         var dt = w2utils.isDateTime(value, params, true);
-        if (dt == '') dt = w2utils.isDate(value, params, true);
+        if (dt === '') dt = w2utils.isDate(value, params, true);
         return '<span title="'+ dt +'">' + w2utils.formatTime(value, params) + '</span>';
     },
 
     'timestamp': function (value, params) {
-        if (params == '') params = w2utils.settings.datetimeFormat;
-        if (value == null || value == 0) return '';
+        if (params === '') params = w2utils.settings.datetimeFormat;
+        if (value == null || value === 0) return '';
         var dt = w2utils.isDateTime(value, params, true);
-        if (dt == '') dt = w2utils.isDate(value, params, true);
+        if (dt === '') dt = w2utils.isDate(value, params, true);
         return dt.toString ? dt.toString() : '';
     },
 
     'gmt': function (value, params) {
-        if (params == '') params = w2utils.settings.datetimeFormat;
-        if (value == null || value == 0) return '';
+        if (params === '') params = w2utils.settings.datetimeFormat;
+        if (value == null || value === 0) return '';
         var dt = w2utils.isDateTime(value, params, true);
-        if (dt == '') dt = w2utils.isDate(value, params, true);
+        if (dt === '') dt = w2utils.isDate(value, params, true);
         return dt.toUTCString ? dt.toUTCString() : '';
     },
 
     'age': function (value, params) {
-        if (value == null || value == 0) return '';
+        if (value == null || value === 0) return '';
         var dt = w2utils.isDateTime(value, null, true);
-        if (dt == '') dt = w2utils.isDate(value, null, true);
+        if (dt === '') dt = w2utils.isDate(value, null, true);
         return '<span title="'+ dt +'">' + w2utils.age(value) + (params ? (' ' + params) : '') + '</span>';
     },
 
     'interval': function (value, params) {
-        if (value == null || value == 0) return '';
+        if (value == null || value === 0) return '';
         return w2utils.interval(value) + (params ? (' ' + params) : '');
     },
 
@@ -1689,12 +1714,12 @@ w2utils.formatters = {
         return (value ? 'Yes' : '');
     },
 
-	'password': function (value, params) {
-    	var ret = "";
-		for (var i=0; i < value.length; i++) {
-			ret += "*";
-		}
-		return ret;
+    'password': function (value, params) {
+        var ret = "";
+        for (var i=0; i < value.length; i++) {
+            ret += "*";
+        }
+        return ret;
     }
 };
 
@@ -1861,7 +1886,7 @@ w2utils.event = {
     $.fn.w2marker = function () {
         var str = Array.prototype.slice.call(arguments, 0);
         if (Array.isArray(str[0])) str = str[0];
-        if (str.length == 0 || !str[0]) { // remove marker
+        if (str.length === 0 || !str[0]) { // remove marker
             return $(this).each(clearMarkedText);
         } else { // add marker
             return $(this).each(function (index, el) {
@@ -1916,7 +1941,7 @@ w2utils.event = {
         if (options.name != null && options.id == null) options.id = options.name;
 
         // for backward compatibility
-        if (options['class'] != '' && options.inputClass == '') options.inputClass = options['class'];
+        if (options['class'] !== '' && options.inputClass === '') options.inputClass = options['class'];
 
         // remove all tags
         if ($(this).length === 0) {
@@ -1940,7 +1965,7 @@ w2utils.event = {
                 clearInterval($tags.data('timer'));
                 $tags.remove();
                 return;
-            } else if ($tags.length != 0) {
+            } else if ($tags.length !== 0) {
                 // if already present
                 options = $.extend($tags.data('options'), options);
                 $tags.data('options', options);
@@ -1965,7 +1990,7 @@ w2utils.event = {
 
             // need time out to allow tag to be rendered
             setTimeout(function () {
-            	$tags.css('display', 'block');
+                $tags.css('display', 'block');
                 if (!$(el).offset()) return;
                 var pos = checkIfMoved(true);
                 if (pos == null) return;
@@ -2013,7 +2038,7 @@ w2utils.event = {
             function checkIfMoved(skipTransition) {
                 // monitor if destroyed
                 var offset = $(el).offset();
-                if ($(el).length === 0 || (offset.left === 0 && offset.top === 0) || $tags.find('.w2ui-tag-body').length == 0) {
+                if ($(el).length === 0 || (offset.left === 0 && offset.top === 0) || $tags.find('.w2ui-tag-body').length === 0) {
                     clearInterval($tags.data('timer'));
                     hideTag();
                     return;
@@ -2132,7 +2157,7 @@ w2utils.event = {
         if (options.name) name = '-' + options.name;
         // hide
         var tmp_hide;
-        if (this.length == 0 || options.html === '' || options.html == null) {
+        if (this.length === 0 || options.html === '' || options.html == null) {
             if ($('#w2ui-overlay'+ name).length > 0) {
                 tmp_hide = $('#w2ui-overlay'+ name)[0].hide;
                 if (typeof tmp_hide === 'function') tmp_hide();
@@ -2215,7 +2240,7 @@ w2utils.event = {
 
         // click anywhere else hides the drop down
         function hide(event) {
-            if (event && event.button != 0) return; // only for left click button
+            if (event && event.button !== 0) return; // only for left click button
             var div1 = $('#w2ui-overlay'+ name);
             if (div1.data('keepOpen') === true) {
                 div1.removeData('keepOpen');
@@ -2320,8 +2345,8 @@ w2utils.event = {
                 var maxHeight = window.innerHeight + $(document).scrollTop() - offset.top - 7;
                 var maxWidth  = window.innerWidth + $(document).scrollLeft() - offset.left - 7;
                 if (options.contextMenu) { // context menu
-                    maxHeight = window.innerHeight - options.pageY - 15;
-                    maxWidth  = window.innerWidth - options.pageX;
+                    maxHeight = window.innerHeight + $(document).scrollTop() - options.pageY - 15;
+                    maxWidth  = window.innerWidth + $(document).scrollLeft() - options.pageX;
                 }
 
                 if ((maxHeight > -50 && maxHeight < 210) || options.openAbove === true) {
@@ -2648,7 +2673,7 @@ w2utils.event = {
                         var bg = (count % 2 === 0 ? 'w2ui-item-even' : 'w2ui-item-odd');
                         if (options.altRows !== true) bg = '';
                         var colspan = 1;
-                        if (imgd == '') colspan++;
+                        if (imgd === '') colspan++;
                         if (mitem.count == null && mitem.hotkey == null) colspan++;
                         if (mitem.tooltip == null && mitem.hint != null) mitem.tooltip = mitem.hint; // for backward compatibility
                         menu_html +=
@@ -2718,7 +2743,7 @@ w2utils.event = {
         }
         if (options.color) options.color = String(options.color).toUpperCase();
 
-        if ($('#w2ui-overlay').length == 0) {
+        if ($('#w2ui-overlay').length === 0) {
             $(el).w2overlay(getColorHTML(options), {
                 onHide: function () {
                     if (typeof callBack == 'function') callBack($(el).data('_color'));
@@ -2749,7 +2774,7 @@ w2utils.event = {
                 event.stopPropagation();
             })
             .on('keyup.w2color', function (event) {
-                if (this.value != '' && this.value[0] != '#') this.value = '#' + this.value;
+                if (this.value !== '' && this.value[0] !== '#') this.value = '#' + this.value;
             })
             .on('change.w2color', function (event) {
                 var tmp = this.value;
@@ -2797,7 +2822,7 @@ w2utils.event = {
                 html += '<tr>';
                 for (var j = 0; j < pal[i].length; j++) {
                     html += '<td>'+
-                            '    <div class="color '+ (pal[i][j] == '' ? 'no-color' : '') +'" style="background-color: #'+ pal[i][j] +';" ' +
+                            '    <div class="color '+ (pal[i][j] === '' ? 'no-color' : '') +'" style="background-color: #'+ pal[i][j] +';" ' +
                             '       name="'+ pal[i][j] +'" index="'+ i + ':' + j +'">'+ (options.color == pal[i][j] ? '&#149;' : '&#160;') +
                             '    </div>'+
                             '</td>';
