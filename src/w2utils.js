@@ -390,7 +390,9 @@ var w2utils = (function ($) {
             options.minimumFractionDigits = 0;
             options.maximumFractionDigits = 20;
         }
-        return parseFloat(val).toLocaleString(w2utils.settings.locale, options);
+        // XXX: utterly broken
+        // return parseFloat(val).toLocaleString(w2utils.settings.locale, options);
+        return parseFloat(val).toString();
     }
 
     function formatDate (dateStr, format) { // IMPORTANT dateStr HAS TO BE valid JavaScript Date String
