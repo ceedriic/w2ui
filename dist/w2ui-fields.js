@@ -32,6 +32,7 @@ var w2obj = w2obj || {}; // expose object to be able to overwrite default functi
 *   - w2utils.keyboard is removed
 *   - w2tag can be positioned with an array of valid values
 *   - decodeTags
+*   - added w2utils.testLocalStorage(), w2utils.hasLocalStorage
 *
 ************************************************/
 
@@ -99,6 +100,8 @@ var w2utils = (function ($) {
         cssPrefix       : cssPrefix,
         getCursorPosition : getCursorPosition,
         setCursorPosition : setCursorPosition,
+        testLocalStorage  : testLocalStorage,
+        hasLocalStorage   : testLocalStorage(),
         // some internal variables
         isIOS : ((navigator.userAgent.toLowerCase().indexOf('iphone') != -1 ||
                  navigator.userAgent.toLowerCase().indexOf('ipod') != -1 ||
@@ -1623,16 +1626,26 @@ var w2utils = (function ($) {
         }
         if (el == null) return;
         if (pos > el.length) pos = el.length;
-        try { // sometimes range becomes not in document
-            range.setStart(el, pos);
-            if (posEnd) {
-                range.setEnd(el, posEnd);
-            } else {
-                range.collapse(true);
-            }
-            sel.removeAllRanges();
-            sel.addRange(range);
+        range.setStart(el, pos);
+        if (posEnd) {
+            range.setEnd(el, posEnd);
+        } else {
+            range.collapse(true);
+        }
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }
+
+    function testLocalStorage() {
+        // test if localStorage is available, see issue #1282
+        // original code: https://github.com/Modernizr/Modernizr/blob/master/feature-detects/storage/localstorage.js
+        var str = 'w2ui_test';
+        try {
+          localStorage.setItem(str, str);
+          localStorage.removeItem(str);
+          return true;
         } catch (e) {
+          return false;
         }
     }
 
@@ -2920,6 +2933,7 @@ w2utils.event = {
 *   - options.recId, options.recText - to define custom id and text for remove data, can be string or function
 *   - options.readContent - for file type
 *   - added support for 'accept' attribute for file type
+*   - options.msgNoItems
 *
 ************************************************************************/
 
@@ -4317,7 +4331,7 @@ w2utils.event = {
                         max    : options.cacheMax
                     };
                     $.extend(postData, options.postData);
-                    var edata = obj.trigger({ phase: 'before', type: 'request', target: obj.el, url: url, postData: postData });
+                    var edata = obj.trigger({ phase: 'before', type: 'request', search: search, target: obj.el, url: url, postData: postData });
                     if (edata.isCancelled === true) return;
                     url      = edata.url;
                     postData = edata.postData;
@@ -4740,6 +4754,8 @@ w2utils.event = {
                     if (options.url != null && $(input).val().length < options.minLength && obj.tmp.emptySet !== true) msgNoItems = options.minLength + ' ' + w2utils.lang('letters or more...');
                     if (options.url != null && $(input).val() === '' && obj.tmp.emptySet !== true) msgNoItems = w2utils.lang('Type to search...');
                     if (options.url == null && options.items.length === 0) msgNoItems = w2utils.lang('Empty list');
+                    if (options.msgNoItems != null) msgNoItems = options.msgNoItems;
+                    if (msgNoItems == 'function') msgNoItems = msgNoItems(options);
                     $(el).w2menu((!indexOnly ? 'refresh' : 'refresh-index'), $.extend(true, {}, options, {
                         search     : false,
                         render     : options.renderDrop,

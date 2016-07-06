@@ -68,7 +68,7 @@
 *   - added hasFocus, refactored w2utils.keyboard
 *   - do not clear selection when clicked and it was not in focus
 *   - added record.w2ui.colspan
-*   - editable area extands with typing
+*   - editable area extends with typing
 *   - removed onSubmit and onDeleted - now it uses onSave and onDelete
 *   - column.seachable - can be an object, which will create search
 *   - added null, not null filters
@@ -123,6 +123,7 @@
 *   - getCellEditable(index, col_ind) -- return an 'editable' descriptor if cell is really editable
 *   - added stateId
 *   - rec.w2ui.class (and rec.w2ui.class { fname: '...' })
+*   - columnTooltip
 *
 ************************************************************************/
 
@@ -2856,12 +2857,13 @@
                     if (tmp.length > 0) {
                         tmp.focus();
                         clearTimeout(obj.last.kbd_timer); // keep focus
+                        var len = $(tmp).text().length;
                         if (value != null) {
                             // set cursor to the end
-                            w2utils.setCursorPosition(tmp[0], $(tmp).text().length);
+                            w2utils.setCursorPosition(tmp[0], len);
                         } else {
                             // select entire text
-                            w2utils.setCursorPosition(tmp[0], 0, $(tmp).text().length);
+                            w2utils.setCursorPosition(tmp[0], 0, len);
                         }
                         expand.call(el.find('div.w2ui-input')[0], null);
                     }
@@ -4060,7 +4062,9 @@
                 for (var c = 0; c < this.columns.length; c++) {
                     var col = this.columns[c];
                     if (col.hidden === true) continue;
-                    text += '"' + w2utils.stripTags(col.caption ? col.caption : col.field) + '"\t';
+                    var colName = (col.caption ? col.caption : col.field);
+                    if (col.caption && col.caption.length < 3 && col.tooltip) colName = col.tooltip; // if column name is less then 3 char and there is tooltip - use it
+                    text += '"' + w2utils.stripTags(colName) + '"\t';
                 }
                 text = text.substr(0, text.length-1); // remove last \t
                 text += '\n';
@@ -7220,7 +7224,7 @@
 
         stateSave: function (returnOnly) {
             var obj = this;
-            if (!localStorage) return null;
+            if (!w2utils.hasLocalStorage) return null;
             var state = {
                 columns     : [],
                 show        : $.extend({}, this.show),
@@ -7277,7 +7281,7 @@
             if (!newState) {
                 // read it from local storage
                 try {
-                    if (!localStorage) return false;
+                    if (!w2utils.hasLocalStorage) return false;
                     var tmp = $.parseJSON(localStorage.w2ui || '{}');
                     if (!tmp) tmp = {};
                     if (!tmp.states) tmp.states = {};
@@ -7331,7 +7335,7 @@
             var obj = this;
             this.stateRestore(this.last.state);
             // remove from local storage
-            if (localStorage) {
+            if (w2utils.hasLocalStorage) {
                 try {
                     var tmp = $.parseJSON(localStorage.w2ui || '{}');
                     if (tmp.states && tmp.states[(this.stateId || this.name)]) {

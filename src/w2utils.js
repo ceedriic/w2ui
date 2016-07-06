@@ -31,6 +31,7 @@ var w2obj = w2obj || {}; // expose object to be able to overwrite default functi
 *   - w2utils.keyboard is removed
 *   - w2tag can be positioned with an array of valid values
 *   - decodeTags
+*   - added w2utils.testLocalStorage(), w2utils.hasLocalStorage
 *
 ************************************************/
 
@@ -98,6 +99,8 @@ var w2utils = (function ($) {
         cssPrefix       : cssPrefix,
         getCursorPosition : getCursorPosition,
         setCursorPosition : setCursorPosition,
+        testLocalStorage  : testLocalStorage,
+        hasLocalStorage   : testLocalStorage(),
         // some internal variables
         isIOS : ((navigator.userAgent.toLowerCase().indexOf('iphone') != -1 ||
                  navigator.userAgent.toLowerCase().indexOf('ipod') != -1 ||
@@ -1622,16 +1625,26 @@ var w2utils = (function ($) {
         }
         if (el == null) return;
         if (pos > el.length) pos = el.length;
-        try { // sometimes range becomes not in document
-            range.setStart(el, pos);
-            if (posEnd) {
-                range.setEnd(el, posEnd);
-            } else {
-                range.collapse(true);
-            }
-            sel.removeAllRanges();
-            sel.addRange(range);
+        range.setStart(el, pos);
+        if (posEnd) {
+            range.setEnd(el, posEnd);
+        } else {
+            range.collapse(true);
+        }
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }
+
+    function testLocalStorage() {
+        // test if localStorage is available, see issue #1282
+        // original code: https://github.com/Modernizr/Modernizr/blob/master/feature-detects/storage/localstorage.js
+        var str = 'w2ui_test';
+        try {
+          localStorage.setItem(str, str);
+          localStorage.removeItem(str);
+          return true;
         } catch (e) {
+          return false;
         }
     }
 

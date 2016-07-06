@@ -32,6 +32,7 @@ var w2obj = w2obj || {}; // expose object to be able to overwrite default functi
 *   - w2utils.keyboard is removed
 *   - w2tag can be positioned with an array of valid values
 *   - decodeTags
+*   - added w2utils.testLocalStorage(), w2utils.hasLocalStorage
 *
 ************************************************/
 
@@ -99,6 +100,8 @@ var w2utils = (function ($) {
         cssPrefix       : cssPrefix,
         getCursorPosition : getCursorPosition,
         setCursorPosition : setCursorPosition,
+        testLocalStorage  : testLocalStorage,
+        hasLocalStorage   : testLocalStorage(),
         // some internal variables
         isIOS : ((navigator.userAgent.toLowerCase().indexOf('iphone') != -1 ||
                  navigator.userAgent.toLowerCase().indexOf('ipod') != -1 ||
@@ -1623,16 +1626,26 @@ var w2utils = (function ($) {
         }
         if (el == null) return;
         if (pos > el.length) pos = el.length;
-        try { // sometimes range becomes not in document
-            range.setStart(el, pos);
-            if (posEnd) {
-                range.setEnd(el, posEnd);
-            } else {
-                range.collapse(true);
-            }
-            sel.removeAllRanges();
-            sel.addRange(range);
+        range.setStart(el, pos);
+        if (posEnd) {
+            range.setEnd(el, posEnd);
+        } else {
+            range.collapse(true);
+        }
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }
+
+    function testLocalStorage() {
+        // test if localStorage is available, see issue #1282
+        // original code: https://github.com/Modernizr/Modernizr/blob/master/feature-detects/storage/localstorage.js
+        var str = 'w2ui_test';
+        try {
+          localStorage.setItem(str, str);
+          localStorage.removeItem(str);
+          return true;
         } catch (e) {
+          return false;
         }
     }
 
@@ -2943,7 +2956,7 @@ w2utils.event = {
 *   - added hasFocus, refactored w2utils.keyboard
 *   - do not clear selection when clicked and it was not in focus
 *   - added record.w2ui.colspan
-*   - editable area extands with typing
+*   - editable area extends with typing
 *   - removed onSubmit and onDeleted - now it uses onSave and onDelete
 *   - column.seachable - can be an object, which will create search
 *   - added null, not null filters
@@ -2998,6 +3011,7 @@ w2utils.event = {
 *   - getCellEditable(index, col_ind) -- return an 'editable' descriptor if cell is really editable
 *   - added stateId
 *   - rec.w2ui.class (and rec.w2ui.class { fname: '...' })
+*   - columnTooltip
 *
 ************************************************************************/
 
@@ -5731,12 +5745,13 @@ w2utils.event = {
                     if (tmp.length > 0) {
                         tmp.focus();
                         clearTimeout(obj.last.kbd_timer); // keep focus
+                        var len = $(tmp).text().length;
                         if (value != null) {
                             // set cursor to the end
-                            w2utils.setCursorPosition(tmp[0], $(tmp).text().length);
+                            w2utils.setCursorPosition(tmp[0], len);
                         } else {
                             // select entire text
-                            w2utils.setCursorPosition(tmp[0], 0, $(tmp).text().length);
+                            w2utils.setCursorPosition(tmp[0], 0, len);
                         }
                         expand.call(el.find('div.w2ui-input')[0], null);
                     }
@@ -6935,7 +6950,9 @@ w2utils.event = {
                 for (var c = 0; c < this.columns.length; c++) {
                     var col = this.columns[c];
                     if (col.hidden === true) continue;
-                    text += '"' + w2utils.stripTags(col.caption ? col.caption : col.field) + '"\t';
+                    var colName = (col.caption ? col.caption : col.field);
+                    if (col.caption && col.caption.length < 3 && col.tooltip) colName = col.tooltip; // if column name is less then 3 char and there is tooltip - use it
+                    text += '"' + w2utils.stripTags(colName) + '"\t';
                 }
                 text = text.substr(0, text.length-1); // remove last \t
                 text += '\n';
@@ -10095,7 +10112,7 @@ w2utils.event = {
 
         stateSave: function (returnOnly) {
             var obj = this;
-            if (!localStorage) return null;
+            if (!w2utils.hasLocalStorage) return null;
             var state = {
                 columns     : [],
                 show        : $.extend({}, this.show),
@@ -10152,7 +10169,7 @@ w2utils.event = {
             if (!newState) {
                 // read it from local storage
                 try {
-                    if (!localStorage) return false;
+                    if (!w2utils.hasLocalStorage) return false;
                     var tmp = $.parseJSON(localStorage.w2ui || '{}');
                     if (!tmp) tmp = {};
                     if (!tmp.states) tmp.states = {};
@@ -10206,7 +10223,7 @@ w2utils.event = {
             var obj = this;
             this.stateRestore(this.last.state);
             // remove from local storage
-            if (localStorage) {
+            if (w2utils.hasLocalStorage) {
                 try {
                     var tmp = $.parseJSON(localStorage.w2ui || '{}');
                     if (tmp.states && tmp.states[(this.stateId || this.name)]) {
@@ -14981,6 +14998,7 @@ var w2prompt = function (label, title, callBack) {
 *   - options.recId, options.recText - to define custom id and text for remove data, can be string or function
 *   - options.readContent - for file type
 *   - added support for 'accept' attribute for file type
+*   - options.msgNoItems
 *
 ************************************************************************/
 
@@ -16378,7 +16396,7 @@ var w2prompt = function (label, title, callBack) {
                         max    : options.cacheMax
                     };
                     $.extend(postData, options.postData);
-                    var edata = obj.trigger({ phase: 'before', type: 'request', target: obj.el, url: url, postData: postData });
+                    var edata = obj.trigger({ phase: 'before', type: 'request', search: search, target: obj.el, url: url, postData: postData });
                     if (edata.isCancelled === true) return;
                     url      = edata.url;
                     postData = edata.postData;
@@ -16801,6 +16819,8 @@ var w2prompt = function (label, title, callBack) {
                     if (options.url != null && $(input).val().length < options.minLength && obj.tmp.emptySet !== true) msgNoItems = options.minLength + ' ' + w2utils.lang('letters or more...');
                     if (options.url != null && $(input).val() === '' && obj.tmp.emptySet !== true) msgNoItems = w2utils.lang('Type to search...');
                     if (options.url == null && options.items.length === 0) msgNoItems = w2utils.lang('Empty list');
+                    if (options.msgNoItems != null) msgNoItems = options.msgNoItems;
+                    if (msgNoItems == 'function') msgNoItems = msgNoItems(options);
                     $(el).w2menu((!indexOnly ? 'refresh' : 'refresh-index'), $.extend(true, {}, options, {
                         search     : false,
                         render     : options.renderDrop,
@@ -18619,7 +18639,7 @@ var w2prompt = function (label, title, callBack) {
                 if (tmp) tmp.clear();
                 $(field.$el).off('change').on('change', function () {
                     var value_new      = this.value;
-                    var value_previous = obj.record[this.name] !== undefined ? obj.record[this.name] : '';
+                    var value_previous = obj.record[this.name] != null ? obj.record[this.name] : '';
                     var field          = obj.get(this.name);
                     if (['list', 'enum', 'file'].indexOf(field.type) != -1 && $(this).data('selected')) {
                         var nv = $(this).data('selected');
