@@ -346,6 +346,7 @@
             "date"    : ['is', 'between', { oper: 'less', text: 'before'}, { oper: 'more', text: 'after' }],
             "list"    : ['is'],
             "hex"     : ['is', 'between'],
+            "color"   : ['is', 'begins', 'contains', 'ends'],
             "enum"    : ['in', 'not in']
             // -- all posible
             // "text"    : ['is', 'begins', 'contains', 'ends'],
@@ -363,7 +364,7 @@
             "percent"      : "number",
             "hex"          : "hex",
             "alphanumeric" : "text",
-            "color"        : "text",
+            "color"        : "color",
             "date"         : "date",
             "time"         : "date",
             "datetime"     : "date",
@@ -1899,7 +1900,7 @@
                                 var search = this.searches[i];
                                 if (    search.type == 'text' || (search.type == 'alphanumeric' && w2utils.isAlphaNumeric(value))
                                         || (search.type == 'int' && w2utils.isInt(value)) || (search.type == 'float' && w2utils.isFloat(value))
-                                        || (search.type == 'percent' && w2utils.isFloat(value)) || (search.type == 'hex' && w2utils.isHex(value))
+                                        || (search.type == 'percent' && w2utils.isFloat(value)) || ((search.type == 'hex' || search.type == 'color') && w2utils.isHex(value))
                                         || (search.type == 'currency' && w2utils.isMoney(value)) || (search.type == 'money' && w2utils.isMoney(value))
                                         || (search.type == 'date' && w2utils.isDate(value)) || (search.type == 'time' && w2utils.isTime(value))
                                         || (search.type == 'datetime' && w2utils.isDateTime(value)) || (search.type == 'enum' && w2utils.isAlphaNumeric(value))
@@ -4528,7 +4529,7 @@
                       '    <div id="grid_'+ this.name +'_fsummary" class="w2ui-grid-body w2ui-grid-summary"></div>'+
                       '    <div id="grid_'+ this.name +'_summary" class="w2ui-grid-body w2ui-grid-summary"></div>'+
                       '    <div id="grid_'+ this.name +'_footer" class="w2ui-grid-footer"></div>'+
-                      '    <textarea id="grid_'+ this.name +'_focus" style="position: absolute; top: 0; right: 0; z-index: -1; opacity: 0"></textarea>'+
+                      '    <textarea id="grid_'+ this.name +'_focus" class="w2ui-grid-focus-input"></textarea>'+
                       '</div>');
             if (this.selectType != 'row') $(this.box).addClass('w2ui-ss');
             if ($(this.box).length > 0) $(this.box)[0].style.cssText += this.style;
@@ -5962,10 +5963,14 @@
                     case 'text':
                     case 'alphanumeric':
                     case 'hex':
+                    case 'color':
                     case 'list':
                     case 'combo':
                     case 'enum':
-                        html += '<input rel="search" type="text" size="40" class="w2ui-input" style="'+ s.style +'" id="grid_'+ this.name +'_field_'+ i +'" name="'+ s.field +'" '+ s.inTag +'/>';
+                        var tmpStyle = 'width: 250px;';
+                        if (['hex', 'color'].indexOf(s.type) != -1) tmpStyle = 'width: 90px;';
+                        html += '<input rel="search" type="text" id="grid_'+ this.name +'_field_'+ i +'" name="'+ s.field +'" '+
+                                '   class="w2ui-input" style="'+ tmpStyle + s.style +'" '+ s.inTag +'/>';
                         break;
 
                     case 'int':
@@ -5976,10 +5981,11 @@
                     case 'date':
                     case 'time':
                     case 'datetime':
-                        var size = (s.type === 'datetime') ? 17 : 12;
-                        html += '<input rel="search" type="text" size="'+ size +'" class="w2ui-input" style="'+ s.style +'" id="grid_'+ this.name +'_field_'+ i +'" name="'+ s.field +'" '+ s.inTag +'/>'+
-                                '<span id="grid_'+ this.name +'_range_'+ i +'" style="display: none">'+
-                                '&#160;-&#160;&#160;<input rel="search" type="text" class="w2ui-input" size="'+ size +'" style="'+ s.style +'" id="grid_'+ this.name +'_field2_'+i+'" name="'+ s.field +'" '+ s.inTag +'/>'+
+                        var tmpStyle = 'width: 90px';
+                        if (s.type == 'datetime') tmpStyle = 'width: 140px;';
+                        html += '<input rel="search" type="text" class="w2ui-input" style="'+ tmpStyle + s.style +'" id="grid_'+ this.name +'_field_'+ i +'" name="'+ s.field +'" '+ s.inTag +'/>'+
+                                '<span id="grid_'+ this.name +'_range_'+ i +'" style="display: none">&#160;-&#160;&#160;'+
+                                '<input rel="search" type="text" class="w2ui-input" style="'+ tmpStyle + s.style +'" id="grid_'+ this.name +'_field2_'+ i +'" name="'+ s.field +'" '+ s.inTag +'/>'+
                                 '</span>';
                         break;
 
@@ -6083,6 +6089,7 @@
                     case 'int':
                     case 'float':
                     case 'hex':
+                    case 'color':
                     case 'money':
                     case 'currency':
                     case 'percent':
