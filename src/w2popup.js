@@ -11,6 +11,7 @@
 *
 * == 1.5 changes
 *   - w2prompt
+*   - w2popup and w2alert return promise now (ok, done, change)
 ************************************************************************/
 
 var w2popup = {};
@@ -861,6 +862,16 @@ var w2alert = function (msg, title, callBack) {
             }
         });
     }
+    return {
+        ok: function (fun) {
+            callBack = fun;
+            return this;
+        },
+        done: function (fun) {
+            callBack = fun;
+            return this;
+        }
+    };
 };
 
 var w2confirm = function (msg, title, callBack) {
@@ -999,10 +1010,11 @@ var w2prompt = function (label, title, callBack) {
     var defaults = {
         label       : '',
         value       : '',
+        attrs       : '',
         title       : w2utils.lang('Notification'),
         ok_text     : w2utils.lang('Ok'),
         cancel_text : w2utils.lang('Cancel'),
-        width       : ($('#w2ui-popup').lengtvalueh > 0 ? 400 : 450),
+        width       : ($('#w2ui-popup').length > 0 ? 400 : 450),
         height      : ($('#w2ui-popup').length > 0 ? 170 : 220),
         callBack    : null
     }
@@ -1030,7 +1042,10 @@ var w2prompt = function (label, title, callBack) {
           w2popup.message({
             width   : options.width,
             height  : options.height,
-            body    : '<div class="w2ui-centered" style="font-size: 13px;"><label style="margin-right: 10px;">' + options.label + ':</label><input id="w2prompt"></div>',
+            body    : '<div class="w2ui-centered" style="font-size: 13px;">'+
+                      '   <label style="margin-right: 10px;">' + options.label + ':</label>'+
+                      '   <input id="w2prompt" '+ options.attrs +'>'+
+                      '</div>',
             buttons : '<button id="Ok" class="w2ui-popup-btn w2ui-btn">' + options.ok_text + '</button><button id="Cancel" class="w2ui-popup-btn w2ui-btn">' + options.cancel_text + '</button>',
             onOpen: function () {
                 $('#w2prompt').val(options.value);
@@ -1103,4 +1118,18 @@ var w2prompt = function (label, title, callBack) {
             }
         });
     }
+    return {
+        change: function (fun) {
+            $('#w2prompt').on('keyup', fun).keyup();
+            return this;
+        },
+        ok: function (fun) {
+            options.callBack = fun;
+            return this;
+        },
+        done: function (fun) {
+            options.callBack = fun;
+            return this;
+        }
+    };
 };

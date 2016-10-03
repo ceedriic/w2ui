@@ -1986,7 +1986,10 @@ w2utils.event = {
             $('.w2ui-tag').each(function (index, el) {
                 var opt = $(el).data('options');
                 if (opt == null) opt = {};
-                $($(el).data('taged-el')).removeClass(opt.inputClass);
+                $($(el).data('taged-el'))
+                    .removeClass(opt.inputClass)
+                    .removeData('w2tag')
+                    .removeData('checkIfMoved');
                 clearInterval($(el).data('timer'));
                 $(el).remove();
             });
@@ -2011,6 +2014,7 @@ w2utils.event = {
                     .attr('style', options.style)
                     .addClass(options.className)
                     .html(options.html);
+                checkIfMoved(true);
             } else {
                 var originalCSS = '';
                 if ($(el).length > 0) originalCSS = $(el)[0].style.cssText;
@@ -2023,7 +2027,7 @@ w2utils.event = {
                     '   </div>' +
                     '</div>');
                 $tags = $('#w2ui-tag-'+tagID);
-                $(el).data('w2tag', $tags.get(0));
+                $(el).data('w2tag', $tags.get(0)).data('checkIfMoved', checkIfMoved);
             }
 
             // need time out to allow tag to be rendered
@@ -2068,12 +2072,13 @@ w2utils.event = {
                 $(document).off('.w2tag');
                 $(el).off('.w2tag', hideTag)
                     .removeClass(options.inputClass)
-                    .removeData('w2tag');
+                    .removeData('w2tag')
+                    .removeData('checkIfMoved');
                 if ($(el).length > 0) $(el)[0].style.cssText = originalCSS;
                 if (typeof options.onHide === 'function') options.onHide();
             }
 
-            function checkIfMoved(skipTransition) {
+            function checkIfMoved(checkOnly, instant) {
                 // monitor if destroyed
                 var offset = $(el).offset();
                 if ($(el).length === 0 || (offset.left === 0 && offset.top === 0) || $tags.find('.w2ui-tag-body').length === 0) {
@@ -2081,7 +2086,7 @@ w2utils.event = {
                     hideTag();
                     return;
                 }
-                setTimeout(checkIfMoved, 100);
+                if (!instant) setTimeout(checkIfMoved, 100);
                 // monitor if moved
                 var posClass = 'w2ui-tag-right';
                 var posLeft  = parseInt(offset.left + el.offsetWidth + (options.left ? options.left : 0));
@@ -2141,8 +2146,8 @@ w2utils.event = {
                             .data('posClass', posClass);
                     }
                 }
-                if ($tags.data('position') !== posLeft + 'x' + posTop && skipTransition !== true) {
-                    $tags.css(w2utils.cssPrefix({ 'transition': '.2s' })).css({
+                if ($tags.data('position') !== posLeft + 'x' + posTop && checkOnly !== true) {
+                    $tags.css(w2utils.cssPrefix({ 'transition': (instant ? '0s' : '.2s') })).css({
                         left: posLeft + 'px',
                         top : posTop + 'px'
                     }).data('position', posLeft + 'x' + posTop);
@@ -2461,6 +2466,10 @@ w2utils.event = {
                 ...
             }
         */
+        // if items is a function
+        if (options && typeof options.items == 'function') {
+            options.items = options.items();
+        }
         var defaults = {
             type       : 'normal',    // can be normal, radio, check
             index      : null,        // current selected
@@ -3013,6 +3022,7 @@ w2utils.event = {
 *   - rec.w2ui.class (and rec.w2ui.class { fname: '...' })
 *   - columnTooltip
 *   - expendable grids are still working
+*   - added search.type = 'color'
 *
 ************************************************************************/
 
@@ -7441,10 +7451,11 @@ w2utils.event = {
                 if (this.searches[i].hidden) { hasHiddenSearches = true; break; }
             }
             if (hasHiddenSearches) {
-                this.searchReset(false);
+                this.searchReset(false); // will call reload
                 if (!url) setTimeout(function () { obj.searchReset(); }, 1);
+            } else {
+                this.reload();
             }
-            this.reload();
             // focus
             $(this.box).find('#grid_'+ this.name + '_focus')
                 .on('focus', function (event) {
@@ -9860,8 +9871,10 @@ w2utils.event = {
                         break;
                     }
                 }
-                for (var i = 0; i < level; i++) {
-                    infoBubble += '<span class="w2ui-show-children w2ui-icon-empty"></span>';
+                if (record.w2ui.parent_recid){
+                        for (var i = 0; i < level; i++) {
+                        infoBubble += '<span class="w2ui-show-children w2ui-icon-empty"></span>';
+                        }
                 }
                 infoBubble += '<span class="w2ui-show-children '+
                         (record.w2ui.children.length > 0
@@ -9960,7 +9973,6 @@ w2utils.event = {
             var rec  = this.records[ind];
             var el   = $(this.box).find('#grid_'+ this.name +'_data_'+ ind +'_'+ col_ind + ' .w2ui-info');
             if (this.last.bubbleEl) $(this.last.bubbleEl).w2tag();
-            if (info.fields == null && typeof info.render == 'function') info.fields = info.render;
             this.last.bubbleEl = el;
             // if no fields defined - show all
             if (info.fields == null) {
@@ -9970,20 +9982,26 @@ w2utils.event = {
                     info.fields.push(col.field + (typeof col.render == 'string' ? ':' + col.render : ''));
                 }
             }
+            var fields = info.fields;
+            if (typeof fields == 'function') {
+                fields = fields(rec, ind, col_ind); // custom renderer
+            }
             // generate html
-            if (typeof info.fields == 'function') {
-                html = info.fields(rec, ind, col_ind); // custom renderer
-            } else if ($.isArray(info.fields)) {
+            if (typeof info.render == 'function') {
+                html = info.render(rec, ind, col_ind);
+
+            } else if ($.isArray(fields)) {
                 // display mentioned fields
                 html = '<table cellpadding="0" cellspacing="0">';
-                for (var i = 0; i < info.fields.length; i++) {
-                    var tmp = String(info.fields[i]).split(':');
+                for (var i = 0; i < fields.length; i++) {
+                    var tmp = String(fields[i]).split(':');
                     if (tmp[0] == '' || tmp[0] == '-' || tmp[0] == '--' || tmp[0] == '---') {
                         html += '<tr><td colspan=2><div style="border-top: '+ (tmp[0] == '' ? '0' : '1') +'px solid #C1BEBE; margin: 6px 0px;"></div></td></tr>';
                         continue;
                     }
                     var col = this.getColumn(tmp[0]);
-                    var val = this.parseField(rec, col.field);
+                    if (col == null) col = { field: tmp[0], caption: tmp[0] }; // if not found in columns
+                    var val = (col ? this.parseField(rec, col.field) : '');
                     if (tmp.length > 1) {
                         if (w2utils.formatters[tmp[1]]) {
                             val = w2utils.formatters[tmp[1]](val, tmp[2] || null);
@@ -9996,11 +10014,11 @@ w2utils.event = {
                     html += '<tr><td>' + col.caption + '</td><td>' + ((val === 0 ? '0' : val) || '') + '</td></tr>';
                 }
                 html += '</table>';
-            } else if ($.isPlainObject(info.fields)) {
+            } else if ($.isPlainObject(fields)) {
                 // display some fields
                 html = '<table cellpadding="0" cellspacing="0">';
-                for (var caption in info.fields) {
-                    var fld = info.fields[caption];
+                for (var caption in fields) {
+                    var fld = fields[caption];
                     if (fld == '' || fld == '-' || fld == '--' || fld == '---') {
                         html += '<tr><td colspan=2><div style="border-top: '+ (fld == '' ? '0' : '1') +'px solid #C1BEBE; margin: 6px 0px;"></div></td></tr>';
                         continue;
@@ -11609,6 +11627,7 @@ w2utils.event = {
 *
 * == 1.5 changes
 *   - w2prompt
+*   - w2popup and w2alert return promise now (ok, done, change)
 ************************************************************************/
 
 var w2popup = {};
@@ -12459,6 +12478,16 @@ var w2alert = function (msg, title, callBack) {
             }
         });
     }
+    return {
+        ok: function (fun) {
+            callBack = fun;
+            return this;
+        },
+        done: function (fun) {
+            callBack = fun;
+            return this;
+        }
+    };
 };
 
 var w2confirm = function (msg, title, callBack) {
@@ -12597,10 +12626,11 @@ var w2prompt = function (label, title, callBack) {
     var defaults = {
         label       : '',
         value       : '',
+        attrs       : '',
         title       : w2utils.lang('Notification'),
         ok_text     : w2utils.lang('Ok'),
         cancel_text : w2utils.lang('Cancel'),
-        width       : ($('#w2ui-popup').lengtvalueh > 0 ? 400 : 450),
+        width       : ($('#w2ui-popup').length > 0 ? 400 : 450),
         height      : ($('#w2ui-popup').length > 0 ? 170 : 220),
         callBack    : null
     }
@@ -12628,7 +12658,10 @@ var w2prompt = function (label, title, callBack) {
           w2popup.message({
             width   : options.width,
             height  : options.height,
-            body    : '<div class="w2ui-centered" style="font-size: 13px;"><label style="margin-right: 10px;">' + options.label + ':</label><input id="w2prompt"></div>',
+            body    : '<div class="w2ui-centered" style="font-size: 13px;">'+
+                      '   <label style="margin-right: 10px;">' + options.label + ':</label>'+
+                      '   <input id="w2prompt" '+ options.attrs +'>'+
+                      '</div>',
             buttons : '<button id="Ok" class="w2ui-popup-btn w2ui-btn">' + options.ok_text + '</button><button id="Cancel" class="w2ui-popup-btn w2ui-btn">' + options.cancel_text + '</button>',
             onOpen: function () {
                 $('#w2prompt').val(options.value);
@@ -12701,6 +12734,20 @@ var w2prompt = function (label, title, callBack) {
             }
         });
     }
+    return {
+        change: function (fun) {
+            $('#w2prompt').on('keyup', fun).keyup();
+            return this;
+        },
+        ok: function (fun) {
+            options.callBack = fun;
+            return this;
+        },
+        done: function (fun) {
+            options.callBack = fun;
+            return this;
+        }
+    };
 };
 
 /************************************************************************
@@ -14207,7 +14254,7 @@ var w2prompt = function (label, title, callBack) {
                 }
                 var ind  = this.get(tmp.parent, arguments[a], true);
                 if (ind == null) continue;
-                if (tmp.parent.nodes[ind].selected)    tmp.sidebar.unselect(tmp.id);
+                if (tmp.parent.nodes[ind].selected) tmp.sidebar.unselect(tmp.id);
                 tmp.parent.nodes.splice(ind, 1);
                 deleted++;
             }
@@ -14860,7 +14907,7 @@ var w2prompt = function (label, title, callBack) {
                 if (nd.caption != null) nd.text = nd.caption;
                 if (nd.group) {
                     html =
-                        '<div class="w2ui-node-group" id="node_'+ nd.id +'"'+
+                        '<div class="w2ui-node-group w2ui-level-'+ level +'" id="node_'+ nd.id +'"'+
                         '   onclick="w2ui[\''+ obj.name +'\'].toggle(\''+ nd.id +'\')"'+
                         '   oncontextmenu="w2ui[\''+ obj.name +'\'].contextMenu(\''+ nd.id +'\', event);"'+
                         '   onmouseout="jQuery(this).find(\'span:nth-child(1)\').css(\'color\', \'transparent\')" '+
@@ -14880,7 +14927,7 @@ var w2prompt = function (label, title, callBack) {
                     if (icon) tmp = '<div class="w2ui-node-image"><span class="'+ icon +'"></span></div>';
                     var text = nd.text;
                     if (typeof nd.text == 'function') text = nd.text.call(obj, nd);
-                    html =  '<div class="w2ui-node '+ (nd.selected ? 'w2ui-selected' : '') +' '+ (nd.disabled ? 'w2ui-disabled' : '') +'" id="node_'+ nd.id +'" style="'+ (nd.hidden ? 'display: none;' : '') +'"'+
+                    html =  '<div class="w2ui-node w2ui-level-'+ level +' '+ (nd.selected ? 'w2ui-selected' : '') +' '+ (nd.disabled ? 'w2ui-disabled' : '') +'" id="node_'+ nd.id +'" style="'+ (nd.hidden ? 'display: none;' : '') +'"'+
                             '    ondblclick="w2ui[\''+ obj.name +'\'].dblClick(\''+ nd.id +'\', event);"'+
                             '    oncontextmenu="w2ui[\''+ obj.name +'\'].contextMenu(\''+ nd.id +'\', event);"'+
                             '    onClick="w2ui[\''+ obj.name +'\'].click(\''+ nd.id +'\', event); ">'+
@@ -14898,7 +14945,7 @@ var w2prompt = function (label, title, callBack) {
                             '</div>'+
                             '<div class="w2ui-node-sub" id="node_'+ nd.id +'_sub" style="'+ nd.style +';'+ (!nd.hidden && nd.expanded ? '' : 'display: none;') +'"></div>';
                     if (obj.flat) {
-                        html =  '<div class="w2ui-node '+ (nd.selected ? 'w2ui-selected' : '') +' '+ (nd.disabled ? 'w2ui-disabled' : '') +'" id="node_'+ nd.id +'" style="'+ (nd.hidden ? 'display: none;' : '') +'"'+
+                        html =  '<div class="w2ui-node w2ui-level-'+ level +' '+ (nd.selected ? 'w2ui-selected' : '') +' '+ (nd.disabled ? 'w2ui-disabled' : '') +'" id="node_'+ nd.id +'" style="'+ (nd.hidden ? 'display: none;' : '') +'"'+
                                 '    onmouseover="jQuery(this).find(\'.w2ui-node-data\').w2tag(w2utils.base64decode(\''+
                                                 w2utils.base64encode(text + (nd.count || nd.count === 0 ? ' - <span class="w2ui-node-count">'+ nd.count +'</span>' : '')) + '\'), '+
                                 '               { id: \'' + nd.id + '\', left: -5 })"'+
@@ -17169,6 +17216,7 @@ var w2prompt = function (label, title, callBack) {
             var tabIndex = $(obj.el).attr('tabIndex');
             if (tabIndex && tabIndex != -1) obj.el._tabIndex = tabIndex;
             if (obj.el._tabIndex) tabIndex = obj.el._tabIndex;
+            if(tabIndex == null) tabIndex = -1;
             // build helper
             var html =
                 '<div class="w2ui-field-helper">'+
@@ -18932,7 +18980,7 @@ var w2prompt = function (label, title, callBack) {
             }
             // focus on load
             function focusEl() {
-                var inputs = $(obj.box).find('input, select, textarea');
+                var inputs = $(obj.box).find('div:not(.w2ui-field-helper) > input, select, textarea').not('.file-input');
                 if (inputs.length > obj.focus) inputs[obj.focus].focus();
             }
             if (this.focus >= 0) {
