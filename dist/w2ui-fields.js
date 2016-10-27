@@ -27,12 +27,6 @@ var w2obj = w2obj || {}; // expose object to be able to overwrite default functi
 *   - subitems for w2menus()
 *   - add w2utils.lang wrap for all captions in all buttons.
 *   - $().w2date(), $().w2dateTime()
-* == 1.5
-*   - added message
-*   - w2utils.keyboard is removed
-*   - w2tag can be positioned with an array of valid values
-*   - decodeTags
-*   - added w2utils.testLocalStorage(), w2utils.hasLocalStorage
 *
 ************************************************/
 
@@ -286,10 +280,10 @@ var w2utils = (function ($) {
     }
 
     function age(dateStr) {
-        var dt1;
+        var d1;
         if (dateStr === '' || dateStr == null) return '';
         if (typeof dateStr.getUTCFullYear === 'function') { // date object
-            dt1 = dateStr;
+            d1 = dateStr;
         } else if (parseInt(dateStr) == dateStr && parseInt(dateStr) > 0) {
             d1 = new Date(parseInt(dateStr));
         } else {
@@ -302,8 +296,8 @@ var w2utils = (function ($) {
         var amount = '';
         var type   = '';
         if (sec < 0) {
-            amount = '<span style="color: #aaa">0 sec</span>';
-            type   = '';
+            amount = 0;
+            type   = 'sec';
         } else if (sec < 60) {
             amount = Math.floor(sec);
             type   = 'sec';
@@ -385,6 +379,7 @@ var w2utils = (function ($) {
     }
 
     function formatNumber (val, fraction, useGrouping) {
+        if (val == null || val === '' || typeof val == 'object') return '';
         var options = {
             minimumFractionDigits : fraction,
             maximumFractionDigits : fraction,
@@ -1475,7 +1470,6 @@ var w2utils = (function ($) {
             type     : "GET",
             dataType : "JSON",
             async    : false,
-            cache    : false,
             success  : function (data, status, xhr) {
                 w2utils.settings = $.extend(true, w2utils.settings, data);
             },
@@ -1696,17 +1690,17 @@ w2utils.formatters = {
 
     'date': function (value, params) {
         if (params === '') params = w2utils.settings.dateFormat;
-        if (value == null || value === 0) return '';
+        if (value == null || value === 0 || value === '') return '';
         var dt = w2utils.isDateTime(value, params, true);
-        if (dt === '') dt = w2utils.isDate(value, params, true);
+        if (dt === false) dt = w2utils.isDate(value, params, true);
         return '<span title="'+ dt +'">' + w2utils.formatDate(dt, params) + '</span>';
     },
 
     'datetime': function (value, params) {
         if (params === '') params = w2utils.settings.datetimeFormat;
-        if (value == null || value === 0) return '';
+        if (value == null || value === 0 || value === '') return '';
         var dt = w2utils.isDateTime(value, params, true);
-        if (dt === '') dt = w2utils.isDate(value, params, true);
+        if (dt === false) dt = w2utils.isDate(value, params, true);
         return '<span title="'+ dt +'">' + w2utils.formatDateTime(dt, params) + '</span>';
     },
 
@@ -1714,37 +1708,37 @@ w2utils.formatters = {
         if (params === '') params = w2utils.settings.timeFormat;
         if (params === 'h12') params = 'hh:mi pm';
         if (params === 'h24') params = 'h24:mi';
-        if (value == null || value === 0) return '';
+        if (value == null || value === 0 || value === '') return '';
         var dt = w2utils.isDateTime(value, params, true);
-        if (dt === '') dt = w2utils.isDate(value, params, true);
+        if (dt === false) dt = w2utils.isDate(value, params, true);
         return '<span title="'+ dt +'">' + w2utils.formatTime(value, params) + '</span>';
     },
 
     'timestamp': function (value, params) {
         if (params === '') params = w2utils.settings.datetimeFormat;
-        if (value == null || value === 0) return '';
+        if (value == null || value === 0 || value === '') return '';
         var dt = w2utils.isDateTime(value, params, true);
-        if (dt === '') dt = w2utils.isDate(value, params, true);
+        if (dt === false) dt = w2utils.isDate(value, params, true);
         return dt.toString ? dt.toString() : '';
     },
 
     'gmt': function (value, params) {
         if (params === '') params = w2utils.settings.datetimeFormat;
-        if (value == null || value === 0) return '';
+        if (value == null || value === 0 || value === '') return '';
         var dt = w2utils.isDateTime(value, params, true);
-        if (dt === '') dt = w2utils.isDate(value, params, true);
+        if (dt === false) dt = w2utils.isDate(value, params, true);
         return dt.toUTCString ? dt.toUTCString() : '';
     },
 
     'age': function (value, params) {
-        if (value == null || value === 0) return '';
+        if (value == null || value === 0 || value === '') return '';
         var dt = w2utils.isDateTime(value, null, true);
-        if (dt === '') dt = w2utils.isDate(value, null, true);
+        if (dt === false) dt = w2utils.isDate(value, null, true);
         return '<span title="'+ dt +'">' + w2utils.age(value) + (params ? (' ' + params) : '') + '</span>';
     },
 
     'interval': function (value, params) {
-        if (value == null || value === 0) return '';
+        if (value == null || value === 0 || value === '') return '';
         return w2utils.interval(value) + (params ? (' ' + params) : '');
     },
 
@@ -1962,7 +1956,7 @@ w2utils.event = {
         options = $.extend({
             id              : null,     // id for the tag, otherwise input id is used
             html            : text,     // or html
-            position        : 'right',  // can be left, right, top, bottom
+            position        : 'right|top',  // can be left, right, top, bottom
             align           : 'none',   // can be none, left, right (only works for potision: top | bottom)
             left            : 0,        // delta for left coordinate
             top             : 0,        // delta for top coordinate
@@ -2094,6 +2088,9 @@ w2utils.event = {
                 var tagBody  = $tags.find('.w2ui-tag-body');
                 var width    = tagBody[0].offsetWidth;
                 var height   = tagBody[0].offsetHeight;
+                if (typeof options.position == 'string' && options.position.indexOf('|') != -1) {
+                    options.position = options.position.split('|');
+                }
                 if (options.position == 'top') {
                     posClass  = 'w2ui-tag-top';
                     posLeft   = parseInt(offset.left + (options.left ? options.left : 0)) - 14;
@@ -2113,31 +2110,31 @@ w2utils.event = {
                     // try to fit the tag on screen in the order defined in the array
                     var maxWidth  = window.innerWidth;
                     var maxHeight = window.innerHeight
-                    for( var i=0; i<options.position.length; i++ ){
+                    for (var i=0; i<options.position.length; i++) {
                         var pos = options.position[i];
-                        if(pos == 'right'){
+                        if (pos == 'right') {
                             posClass = 'w2ui-tag-right';
                             posLeft  = parseInt(offset.left + el.offsetWidth + (options.left ? options.left : 0));
                             posTop   = parseInt(offset.top + (options.top ? options.top : 0));
-                            if(posLeft+width <= maxWidth) break;
+                            if (posLeft+width <= maxWidth) break;
                         }
-                        else if(pos == 'left'){
+                        else if (pos == 'left') {
                             posClass  = 'w2ui-tag-left';
                             posLeft   = parseInt(offset.left + (options.left ? options.left : 0)) - width - 20;
                             posTop    = parseInt(offset.top + (options.top ? options.top : 0));
-                            if(posLeft >= 0) break;
+                            if (posLeft >= 0) break;
                         }
-                        else if(pos == 'top'){
+                        else if (pos == 'top') {
                             posClass  = 'w2ui-tag-top';
                             posLeft   = parseInt(offset.left + (options.left ? options.left : 0)) - 14;
                             posTop    = parseInt(offset.top + (options.top ? options.top : 0)) - height - 10;
                             if(posLeft+width <= maxWidth && posTop >= 0) break;
                         }
-                        else if(pos == 'bottom'){
+                        else if (pos == 'bottom') {
                             posClass  = 'w2ui-tag-bottom';
                             posLeft   = parseInt(offset.left + (options.left ? options.left : 0)) - 14;
                             posTop    = parseInt(offset.top + el.offsetHeight + (options.top ? options.top : 0)) + 10;
-                            if(posLeft+width <= maxWidth && posTop+height <= maxHeight) break;
+                            if (posLeft+width <= maxWidth && posTop+height <= maxHeight) break;
                         }
                     }
                     if (tagBody.data('posClass') !== posClass) {
@@ -2905,44 +2902,18 @@ w2utils.event = {
 * == NICE TO HAVE ==
 *   - upload (regular files)
 *   - BUG with prefix/postfix and arrows (test in different contexts)
-*   - prefix and suffix are slow (100ms or so)
 *   - multiple date selection
 *   - month selection, year selections
 *   - arrows no longer work (for int)
 *   - form to support custom types
 *   - rewrite suffix and prefix positioning with translateY()
+*   - prefix and suffix are slow (100ms or so)
 *   - MultiSelect - Allow Copy/Paste for single and multi values
 *   - add routeData to list/enum
 *   - for type: list -> read value from attr('value')
-*   - ENUM, LIST: should be able to define which is ID field and which is TEXT
-*   - ENUM, LIST: same data structure as grid
 *   - ENUM, LIST: should have same as grid (limit, offset, search, sort)
-*   - ENUM, LIST: should support wild cars
+*   - ENUM, LIST: should support wild chars
 *   - add selection of predefined times (used for appointments)
-*
-* == 1.5 changes
-*   - added support decimalSymbol (added options.decimalSymbol)
-*   - $('#id').w2field() - will return w2field object (same as $('#id').data('w2field'))
-*   - added resize() function and automatic watching for size
-*   - bug: if input is hidden and then enum is applied, then when it becomes visible, it will be 110px
-*   - deprecate placeholder, read it from input
-*   - added get(), set(), setIndex() for fields
-*   - added options.compare function for list, combo, enum
-*   - added options.filter for list, combo, enum
-*   - added selection for the current date in the calendar
-*   - added for enum options.onScroll
-*   - modified clearCache()
-*   - changed onSearch - happens when search input changes
-*   - added options.method - for combo/list/enum if url is defined
-*   - options.items can be a function now
-*   - options.maxDropWidth
-*   - options.noMinutes - for time field
-*   - options.transarent = t/f for color
-*   - remote data is not compatible with grid
-*   - options.recId, options.recText - to define custom id and text for remove data, can be string or function
-*   - options.readContent - for file type
-*   - added support for 'accept' attribute for file type
-*   - options.msgNoItems
 *
 ************************************************************************/
 
@@ -3398,21 +3369,37 @@ w2utils.event = {
             return ret;
         },
 
-        set: function (val) {
+        set: function (val, append) {
             if (['list', 'enum', 'file'].indexOf(this.type) != -1) {
-                $(this.el).data('selected', val).change();
+                if (this.type != 'list' && append) {
+                    if ($(this.el).data('selected') == null) $(this.el).data('selected', []);
+                    $(this.el).data('selected').push(val);
+                    $(this.el).change();
+                } else {
+                    var it = (this.type == 'enum' ? [val] : val);
+                    $(this.el).data('selected', it).change();
+                }
                 this.refresh();
             } else {
                 $(this.el).val(val);
             }
         },
 
-        setIndex: function (ind) {
-            var items = this.options.items;
-            if (items && items[ind]) {
-                $(this.el).data('selected', items[ind]).change();
-                this.refresh();
-                return true;
+        setIndex: function (ind, append) {
+            if (['list', 'enum'].indexOf(this.type) != -1) {
+                var items = this.options.items;
+                if (items && items[ind]) {
+                    if (this.type != 'list' && append) {
+                        if ($(this.el).data('selected') == null) $(this.el).data('selected', []);
+                        $(this.el).data('selected').push(items[ind]);
+                        $(this.el).change();
+                    } else {
+                        var it = (this.type == 'enum' ? [items[ind]] : items[ind]);
+                        $(this.el).data('selected', it).change();
+                    }
+                    this.refresh();
+                    return true;
+                }
             }
             return false;
         },
@@ -3483,7 +3470,7 @@ w2utils.event = {
                     var focus = obj.helpers.focus.find('input');
                     if ($(focus).val() === '') {
                         $(focus).css('text-indent', '-9999em').prev().css('opacity', 0);
-                        $(obj.el).val(selected && selected.text != null ? selected.text : '');
+                        $(obj.el).val(selected && selected.text != null ? w2utils.lang(selected.text) : '');
                     } else {
                         $(focus).css('text-indent', 0).prev().css('opacity', 1);
                         $(obj.el).val('');
@@ -5102,7 +5089,7 @@ w2utils.event = {
             var tabIndex = $(obj.el).attr('tabIndex');
             if (tabIndex && tabIndex != -1) obj.el._tabIndex = tabIndex;
             if (obj.el._tabIndex) tabIndex = obj.el._tabIndex;
-            if(tabIndex == null) tabIndex = -1;
+            if (tabIndex == null) tabIndex = -1;
             // build helper
             var html =
                 '<div class="w2ui-field-helper">'+
@@ -5168,8 +5155,8 @@ w2utils.event = {
         },
 
         addMulti: function () {
-            var obj         = this;
-            var options     = this.options;
+            var obj     = this;
+            var options = this.options;
             // clean up & init
             $(obj.helpers.multi).remove();
             // build helper
@@ -5184,11 +5171,17 @@ w2utils.event = {
                                     - parseInt($(obj.el).css('margin-right'), 10))
                                     + 'px;';
             if (obj.type == 'enum') {
+                // remember original tabindex
+                var tabIndex = $(obj.el).attr('tabIndex');
+                if (tabIndex && tabIndex != -1) obj.el._tabIndex = tabIndex;
+                if (obj.el._tabIndex) tabIndex = obj.el._tabIndex;
+                if (tabIndex == null) tabIndex = -1;
+
                 html =  '<div class="w2ui-field-helper w2ui-list" style="'+ margin + '; box-sizing: border-box">'+
                         '    <div style="padding: 0px; margin: 0px; display: inline-block" class="w2ui-multi-items">'+
                         '    <ul>'+
                         '        <li style="padding-left: 0px; padding-right: 0px" class="nomouse">'+
-                        '            <input type="text" style="width: 20px; margin: -3px 0 0; padding: 2px 0; border-color: white" autocomplete="off"' + ($(obj.el).prop('readonly') ? ' readonly="readonly"': '') + ($(obj.el).prop('disabled') ? ' disabled="disabled"': '') + '/>'+
+                        '            <input type="text" style="width: 20px; margin: -3px 0 0; padding: 2px 0; border-color: white" autocomplete="off"' + ($(obj.el).prop('readonly') ? ' readonly="readonly"': '') + ($(obj.el).prop('disabled') ? ' disabled="disabled"': '') + ' tabindex="'+ tabIndex +'"/>'+
                         '        </li>'+
                         '    </ul>'+
                         '    </div>'+
