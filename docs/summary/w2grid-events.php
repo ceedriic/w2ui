@@ -1,5 +1,6 @@
 <link rel="stylesheet" type="text/css" href="../summary.css"/> 
-<div class="container"><div class="obj-property">
+<div class="container">
+<div class="obj-property">
     <a href="w2grid.onAdd">onAdd</a> <span>- function (event)</span>
 </div>
 <div class="obj-property-desc">
@@ -74,13 +75,6 @@
 </div>
 <div class="obj-property-desc">
     Called when user clicks the Delete button on the toolbar.
-</div>
-
-<div class="obj-property">
-    <a href="w2grid.onDeleted">onDeleted</a> <span>- function (event)</span>
-</div>
-<div class="obj-property-desc">
-    Called when server responds back after delete request.
 </div>
 
 <div class="obj-property">

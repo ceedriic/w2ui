@@ -150,7 +150,8 @@ $(function () {
                     { id: 'fields-4', text: 'Multi Selects', icon: 'fa-edit' },
                     { id: 'fields-5', text: 'File Upload', icon: 'fa-edit' },
                     { id: 'fields-6', text: 'Remote Source', icon: 'fa-edit' },
-                    { id: 'fields-7', text: 'Get/Set Value (1.5+)', icon: 'fa-edit' }
+                    { id: 'fields-7', text: 'Get/Set Value (1.5+)', icon: 'fa-edit' },
+                    { id: 'fields-8', text: 'Color Picker (1.5+)', icon: 'fa-edit' }
                 ]
             },
             { id: 'popup', text: 'Popup', img: 'icon-folder', group1: true,
@@ -253,6 +254,7 @@ $(function () {
                     '    <textarea name="html">'+ html.replace(/<textarea/gi, '&lt;textarea').replace(/<\/textarea>/gi, '&lt;/textarea&gt;') +'</textarea>'+
                     '    <textarea name="js">'+ js +'</textarea>'+
                     '    <textarea name="css">'+ css +'</textarea>'+
+                    '    <textarea name="wrap">l</textarea>'+
                     '</form>'+
                     '</div>');
             });

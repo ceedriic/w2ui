@@ -27,12 +27,18 @@ var w2obj = w2obj || {}; // expose object to be able to overwrite default functi
 *   - add w2utils.lang wrap for all captions in all buttons.
 *   - $().w2date(), $().w2dateTime()
 *
+* == 1.5 change
+*   - parseColor(str) returns rgb
+*   - rgb2hsv, hsv2rgb
+*   - color.onSelect
+*   - refactored w2tag object, it has more potential with $().data('w2tag')
+*
 ************************************************/
 
 var w2utils = (function ($) {
     var tmp = {}; // for some temp variables
     var obj = {
-        version  : '1.5.RC1',
+        version  : '1.5.x',
         settings : {
             "locale"            : "en-us",
             "dateFormat"        : "m/d/yyyy",
@@ -91,6 +97,9 @@ var w2utils = (function ($) {
         checkUniqueId   : checkUniqueId,
         parseRoute      : parseRoute,
         cssPrefix       : cssPrefix,
+        parseColor      : parseColor,
+        hsv2rgb         : hsv2rgb,
+        rgb2hsv         : rgb2hsv,
         getCursorPosition : getCursorPosition,
         setCursorPosition : setCursorPosition,
         testLocalStorage  : testLocalStorage,
@@ -470,7 +479,7 @@ var w2utils = (function ($) {
         } else {
             fmt = format.split('|');
             fmt[0] = fmt[0].trim();
-            fmt[1] = fmt[1].trim();
+            fmt[1] = (fmt.length > 1 ? fmt[1].trim() : this.settings.timeFormat);
         }
         // older formats support
         if (fmt[1] == 'h12') fmt[1] = 'h:m pm';
@@ -1642,6 +1651,101 @@ var w2utils = (function ($) {
         }
     }
 
+    function parseColor(str) {
+        if (typeof str != 'string') return null; else str = str.trim().toUpperCase();
+        if (str[0] == '#') str = str.substr(1);
+        var color = {};
+        if (str.length == 3) {
+            color = {
+                r: parseInt(str[0] + str[0], 16),
+                g: parseInt(str[1] + str[1], 16),
+                b: parseInt(str[2] + str[2], 16),
+                a: 1
+            }
+        } else if (str.length == 6) {
+            color = {
+                r: parseInt(str.substr(0, 2), 16),
+                g: parseInt(str.substr(2, 2), 16),
+                b: parseInt(str.substr(4, 2), 16),
+                a: 1
+            }
+        } else if (str.length > 4 && str.substr(0, 4) == 'RGB(') {
+            var tmp = str.replace('RGB', '').replace(/\(/g, '').replace(/\)/g, '').split(',');
+            color = {
+                r: parseInt(tmp[0], 10),
+                g: parseInt(tmp[1], 10),
+                b: parseInt(tmp[2], 10),
+                a: 1
+            }
+        } else if (str.length > 5 && str.substr(0, 5) == 'RGBA(') {
+            var tmp = str.replace('RGBA', '').replace(/\(/g, '').replace(/\)/g, '').split(',');
+            color = {
+                r: parseInt(tmp[0], 10),
+                g: parseInt(tmp[1], 10),
+                b: parseInt(tmp[2], 10),
+                a: parseFloat(tmp[3])
+            }
+        } else {
+            // word color
+            return null;
+        }
+        return color;
+    }
+
+    // h=0..360, s=0..100, v=0..100
+    function hsv2rgb(h, s, v, a) {
+        var r, g, b, i, f, p, q, t;
+        if (arguments.length === 1) {
+            s = h.s; v = h.v; a = h.a; h = h.h;
+        }
+        h = h / 360;
+        s = s / 100;
+        v = v / 100;
+        i = Math.floor(h * 6);
+        f = h * 6 - i;
+        p = v * (1 - s);
+        q = v * (1 - f * s);
+        t = v * (1 - (1 - f) * s);
+        switch (i % 6) {
+            case 0: r = v, g = t, b = p; break;
+            case 1: r = q, g = v, b = p; break;
+            case 2: r = p, g = v, b = t; break;
+            case 3: r = p, g = q, b = v; break;
+            case 4: r = t, g = p, b = v; break;
+            case 5: r = v, g = p, b = q; break;
+        }
+        return {
+            r: Math.round(r * 255),
+            g: Math.round(g * 255),
+            b: Math.round(b * 255),
+            a: (a != null ? a : 1)
+        }
+    }
+
+    // r=0..255, g=0..255, b=0..255
+    function rgb2hsv(r, g, b, a) {
+        if (arguments.length === 1) {
+            g = r.g; b = r.b; a = r.a; r = r.r;
+        }
+        var max = Math.max(r, g, b), min = Math.min(r, g, b),
+            d = max - min,
+            h,
+            s = (max === 0 ? 0 : d / max),
+            v = max / 255;
+        switch (max) {
+            case min: h = 0; break;
+            case r: h = (g - b) + d * (g < b ? 6: 0); h /= 6 * d; break;
+            case g: h = (b - r) + d * 2; h /= 6 * d; break;
+            case b: h = (r - g) + d * 4; h /= 6 * d; break;
+        }
+        return {
+            h: Math.round(h * 360),
+            s: Math.round(s * 100),
+            v: Math.round(v * 100),
+            a: (a != null ? a : 1)
+        }
+    }
+
 })(jQuery);
 
 /***********************************************************
@@ -1787,7 +1891,6 @@ w2utils.event = {
         if (!edata.type) { console.log('ERROR: You must specify event type when calling .on() method of '+ this.name); return; }
         if (!handler) { console.log('ERROR: You must specify event handler function when calling .on() method of '+ this.name); return; }
         if (!$.isArray(this.handlers)) this.handlers = [];
-        console.log('add', edata);
         this.handlers.push({ edata: edata, handler: handler });
     },
 
@@ -1982,7 +2085,8 @@ w2utils.event = {
             onHide          : null,     // callBack when hidden
             hideOnKeyPress  : true,     // hide tag if key pressed
             hideOnBlur      : false,    // hide tag on blur
-            hideOnClick     : false     // hide tag on document click
+            hideOnClick     : false,    // hide tag on document click
+            hideOnChange    : true
         }, options);
         if (options.name != null && options.id == null) options.id = options.name;
 
@@ -1992,162 +2096,196 @@ w2utils.event = {
         // remove all tags
         if ($(this).length === 0) {
             $('.w2ui-tag').each(function (index, el) {
-                var opt = $(el).data('options');
-                if (opt == null) opt = {};
-                $($(el).data('taged-el'))
-                    .removeClass(opt.inputClass)
-                    .removeData('w2tag')
-                    .removeData('checkIfMoved');
-                clearInterval($(el).data('timer'));
-                $(el).remove();
+                var tag = $(el).data('w2tag');
+                if (tag) tag.hide();
             });
             return;
         }
         return $(this).each(function (index, el) {
-            // show or hide tag
+            // main object
+            var tag;
             var origID = (options.id ? options.id : el.id);
-            var tagID  = w2utils.escapeId(origID);
-            var $tags  = $('#w2ui-tag-'+tagID);
-            if (text === '' || text == null) {
-                // remmove element
-                $tags.css('opacity', 0);
-                clearInterval($tags.data('timer'));
-                $tags.remove();
-                return;
-            } else if ($tags.length !== 0) {
-                // if already present
-                options = $.extend($tags.data('options'), options);
-                $tags.data('options', options);
-                $tags.find('.w2ui-tag-body')
-                    .attr('style', options.style)
-                    .addClass(options.className)
-                    .html(options.html);
-                checkIfMoved(true);
+            if (origID == '') { // search for an id
+                origID = $(el).find('input').attr('id');
+            }
+            if (!origID) {
+                origID = 'noid';
+            }
+            var tmpID  = w2utils.escapeId(origID);
+            if ($(this).data('w2tag') != null) {
+                tag = $(this).data('w2tag');
+                $.extend(tag.options, options);
             } else {
-                var originalCSS = '';
-                if ($(el).length > 0) originalCSS = $(el)[0].style.cssText;
+                tag = {
+                    id        : origID,
+                    attachedTo: el,          // element attached to
+                    box       : $('#w2ui-tag-' + tmpID), // tag itself
+                    options   : $.extend({}, options),
+                    // methods
+                    init      : init,      // attach events
+                    hide      : hide,      // hide tag
+                    getPos    : getPos,    // gets position of tag
+                    isMoved   : isMoved,   // if called, will adjust position
+                    // internal
+                    tmp       : {}         // for temp variables
+                }
+            }
+            // show or hide tag
+            if (text === '' || text == null) {
+                tag.hide();
+            } else if (tag.box.length !== 0) {
+                // if already present
+                tag.box.find('.w2ui-tag-body')
+                    .css(tag.options.css)
+                    .attr('style', tag.options.style)
+                    .addClass(tag.options.className)
+                    .html(tag.options.html);
+            } else {
+                tag.tmp.originalCSS = '';
+                if ($(tag.attachedTo).length > 0) tag.tmp.originalCSS = $(tag.attachedTo)[0].style.cssText;
                 // insert
                 $('body').append(
-                    '<div onclick="event.stopPropagation()" style="display:none;" id="w2ui-tag-'+ origID +'" '+
-                    '       class="w2ui-tag '+ ($(el).parents('.w2ui-popup, .w2ui-overlay-popup, .w2ui-message').length > 0 ? 'w2ui-tag-popup' : '') + '">'+
+                    '<div onclick="event.stopPropagation()" style="display: none;" id="w2ui-tag-'+ tag.id +'" '+
+                    '       class="w2ui-tag '+ ($(tag.attachedTo).parents('.w2ui-popup, .w2ui-overlay-popup, .w2ui-message').length > 0 ? 'w2ui-tag-popup' : '') + '">'+
                     '   <div style="margin: -2px 0px 0px -2px; white-space: nowrap;">'+
-                    '      <div class="w2ui-tag-body '+ options.className +'" style="'+ (options.style || '') +'">'+ text +'</div>'+
+                    '      <div class="w2ui-tag-body '+ tag.options.className +'" style="'+ (tag.options.style || '') +'">'+ text +'</div>'+
                     '   </div>' +
                     '</div>');
-                $tags = $('#w2ui-tag-'+tagID);
-                $(el).data('w2tag', $tags.get(0)).data('checkIfMoved', checkIfMoved);
+                tag.box = $('#w2ui-tag-' + tmpID);
+                $(tag.attachedTo).data('w2tag', tag); // make available to element tag attached to
+                setTimeout(init, 1);
             }
+            return;
 
-            // need time out to allow tag to be rendered
-            setTimeout(function () {
-                $tags.css('display', 'block');
-                if (!$(el).offset()) return;
-                var pos = checkIfMoved(true);
-                if (pos == null) return;
-                $tags.css({
+            function init() {
+                tag.box.css('display', 'block');
+                if (!tag || !tag.box || !$(tag.attachedTo).offset()) return;
+                var pos = tag.getPos();
+                tag.box.css({
                         opacity : '1',
                         left    : pos.left + 'px',
                         top     : pos.top + 'px'
                     })
-                    .data('options', options)
-                    .data('taged-el', el)
-                    .data('position', pos.left + 'x' + pos.top)
-                    .data('timer', setTimeout(checkIfMoved, 100))
+                    .data('w2tag', tag)
                     .find('.w2ui-tag-body').addClass(pos['posClass']);
+                tag.tmp.pos = pos.left + 'x' + pos.top;
 
-                $(el).css(options.css)
+                $(tag.attachedTo)
                     .off('.w2tag')
-                    .addClass(options.inputClass);
+                    .css(tag.options.css)
+                    .addClass(tag.options.inputClass);
 
-                if (options.hideOnKeyPress) {
-                    $(el).on('keypress.w2tag', hideTag);
+                if (tag.options.hideOnKeyPress) {
+                    $(tag.attachedTo).on('keypress.w2tag', tag.hide);
                 }
-                if (options.hideOnBlur) {
-                    $(el).on('blur.w2tag', hideTag);
+                if (options.hideOnChange) {
+                    if (el.nodeName == 'INPUT') {
+                        $(el).on('change.w2tag', tag.hide);
+                    } else {
+                        $(el).find('input').on('change.w2tag', tag.hide);
+                    }
                 }
-                if (options.hideOnClick) {
-                    $(document).on('click.w2tag', hideTag)
+                if (tag.options.hideOnBlur) {
+                    $(tag.attachedTo).on('blur.w2tag', tag.hide);
                 }
-                if (typeof options.onShow === 'function') options.onShow();
-            }, 1);
-
-            // bind event to hide it
-            function hideTag() {
-                $tags = $('#w2ui-tag-'+tagID);
-                if ($tags.length <= 0) return;
-                clearInterval($tags.data('timer'));
-                $tags.remove();
-                $(document).off('.w2tag');
-                $(el).off('.w2tag', hideTag)
-                    .removeClass(options.inputClass)
-                    .removeData('w2tag')
-                    .removeData('checkIfMoved');
-                if ($(el).length > 0) $(el)[0].style.cssText = originalCSS;
-                if (typeof options.onHide === 'function') options.onHide();
+                if (tag.options.hideOnClick) {
+                    $(document).on('click.w2tag', tag.hide)
+                }
+                if (typeof tag.options.onShow === 'function') {
+                    tag.options.onShow();
+                }
+                isMoved();
             }
 
-            function checkIfMoved(checkOnly, instant) {
+            // bind event to hide it
+            function hide() {
+                if (tag.box.length <= 0) return;
+                if (tag.tmp.timer) clearTimeout(tag.tmp.timer);
+                tag.box.remove();
+                if (tag.options.hideOnClick) {
+                    $(document).off('.w2tag');
+                }
+                $(tag.attachedTo).off('.w2tag')
+                    .removeClass(tag.options.inputClass)
+                    .removeData('w2tag');
+                // restore original CSS
+                if ($(tag.attachedTo).length > 0) {
+                    $(tag.attachedTo)[0].style.cssText = tag.tmp.originalCSS;
+                }
+                if (typeof tag.options.onHide === 'function') {
+                    tag.options.onHide();
+                }
+            }
+
+            function isMoved(instant) {
                 // monitor if destroyed
-                var offset = $(el).offset();
-                if ($(el).length === 0 || (offset.left === 0 && offset.top === 0) || $tags.find('.w2ui-tag-body').length === 0) {
-                    clearInterval($tags.data('timer'));
-                    hideTag();
+                var offset = $(tag.attachedTo).offset();
+                if ($(tag.attachedTo).length === 0 || (offset.left === 0 && offset.top === 0) || tag.box.find('.w2ui-tag-body').length === 0) {
+                    tag.hide();
                     return;
                 }
-                if (!instant) setTimeout(checkIfMoved, 100);
-                // monitor if moved
+                var pos = getPos();
+                if (tag.tmp.pos !== pos.left + 'x' + pos.top) {
+                    tag.box
+                        .css(w2utils.cssPrefix({ 'transition': (instant ? '0s' : '.2s') }))
+                        .css({
+                            left: pos.left + 'px',
+                            top : pos.top + 'px'
+                        });
+                    tag.tmp.pos = pos.left + 'x' + pos.top;
+                }
+                if (tag.tmp.timer) clearTimeout(tag.tmp.timer);
+                tag.tmp.timer = setTimeout(isMoved, 100);
+            }
+
+            function getPos() {
+                var offset   = $(tag.attachedTo).offset();
                 var posClass = 'w2ui-tag-right';
-                var posLeft  = parseInt(offset.left + el.offsetWidth + (options.left ? options.left : 0));
-                var posTop   = parseInt(offset.top + (options.top ? options.top : 0));
-                var tagBody  = $tags.find('.w2ui-tag-body');
+                var posLeft  = parseInt(offset.left + tag.attachedTo.offsetWidth + (tag.options.left ? tag.options.left : 0));
+                var posTop   = parseInt(offset.top + (tag.options.top ? tag.options.top : 0));
+                var tagBody  = tag.box.find('.w2ui-tag-body');
                 var width    = tagBody[0].offsetWidth;
                 var height   = tagBody[0].offsetHeight;
-                if (typeof options.position == 'string' && options.position.indexOf('|') != -1) {
-                    options.position = options.position.split('|');
+                if (typeof tag.options.position == 'string' && tag.options.position.indexOf('|') != -1) {
+                    tag.options.position = tag.options.position.split('|');
                 }
-                if (options.position == 'top') {
+                if (tag.options.position == 'top') {
                     posClass  = 'w2ui-tag-top';
-                    posLeft   = parseInt(offset.left + (options.left ? options.left : 0)) - 14;
-                    posTop    = parseInt(offset.top + (options.top ? options.top : 0)) - height - 10;
-                }
-                else if (options.position == 'bottom') {
+                    posLeft   = parseInt(offset.left + (tag.options.left ? tag.options.left : 0)) - 14;
+                    posTop    = parseInt(offset.top + (tag.options.top ? tag.options.top : 0)) - height - 10;
+                } else if (tag.options.position == 'bottom') {
                     posClass  = 'w2ui-tag-bottom';
-                    posLeft   = parseInt(offset.left + (options.left ? options.left : 0)) - 14;
-                    posTop    = parseInt(offset.top + el.offsetHeight + (options.top ? options.top : 0)) + 10;
-                }
-                else if (options.position == 'left') {
+                    posLeft   = parseInt(offset.left + (tag.options.left ? tag.options.left : 0)) - 14;
+                    posTop    = parseInt(offset.top + tag.attachedTo.offsetHeight + (tag.options.top ? tag.options.top : 0)) + 10;
+                } else if (tag.options.position == 'left') {
                     posClass  = 'w2ui-tag-left';
-                    posLeft   = parseInt(offset.left + (options.left ? options.left : 0)) - width - 20;
-                    posTop    = parseInt(offset.top + (options.top ? options.top : 0));
-                }
-                else if (Array.isArray(options.position)) {
+                    posLeft   = parseInt(offset.left + (tag.options.left ? tag.options.left : 0)) - width - 20;
+                    posTop    = parseInt(offset.top + (tag.options.top ? tag.options.top : 0));
+                } else if (Array.isArray(tag.options.position)) {
                     // try to fit the tag on screen in the order defined in the array
                     var maxWidth  = window.innerWidth;
                     var maxHeight = window.innerHeight
-                    for (var i=0; i<options.position.length; i++) {
-                        var pos = options.position[i];
+                    for (var i = 0; i < tag.options.position.length; i++) {
+                        var pos = tag.options.position[i];
                         if (pos == 'right') {
                             posClass = 'w2ui-tag-right';
-                            posLeft  = parseInt(offset.left + el.offsetWidth + (options.left ? options.left : 0));
-                            posTop   = parseInt(offset.top + (options.top ? options.top : 0));
+                            posLeft  = parseInt(offset.left + tag.attachedTo.offsetWidth + (tag.options.left ? tag.options.left : 0));
+                            posTop   = parseInt(offset.top + (tag.options.top ? tag.options.top : 0));
                             if (posLeft+width <= maxWidth) break;
-                        }
-                        else if (pos == 'left') {
+                        } else if (pos == 'left') {
                             posClass  = 'w2ui-tag-left';
-                            posLeft   = parseInt(offset.left + (options.left ? options.left : 0)) - width - 20;
-                            posTop    = parseInt(offset.top + (options.top ? options.top : 0));
+                            posLeft   = parseInt(offset.left + (tag.options.left ? tag.options.left : 0)) - width - 20;
+                            posTop    = parseInt(offset.top + (tag.options.top ? tag.options.top : 0));
                             if (posLeft >= 0) break;
-                        }
-                        else if (pos == 'top') {
+                        } else if (pos == 'top') {
                             posClass  = 'w2ui-tag-top';
-                            posLeft   = parseInt(offset.left + (options.left ? options.left : 0)) - 14;
-                            posTop    = parseInt(offset.top + (options.top ? options.top : 0)) - height - 10;
+                            posLeft   = parseInt(offset.left + (tag.options.left ? tag.options.left : 0)) - 14;
+                            posTop    = parseInt(offset.top + (tag.options.top ? tag.options.top : 0)) - height - 10;
                             if(posLeft+width <= maxWidth && posTop >= 0) break;
-                        }
-                        else if (pos == 'bottom') {
+                        } else if (pos == 'bottom') {
                             posClass  = 'w2ui-tag-bottom';
-                            posLeft   = parseInt(offset.left + (options.left ? options.left : 0)) - 14;
-                            posTop    = parseInt(offset.top + el.offsetHeight + (options.top ? options.top : 0)) + 10;
+                            posLeft   = parseInt(offset.left + (tag.options.left ? tag.options.left : 0)) - 14;
+                            posTop    = parseInt(offset.top + tag.attachedTo.offsetHeight + (tag.options.top ? tag.options.top : 0)) + 10;
                             if (posLeft+width <= maxWidth && posTop+height <= maxHeight) break;
                         }
                     }
@@ -2156,12 +2294,6 @@ w2utils.event = {
                             .addClass(posClass)
                             .data('posClass', posClass);
                     }
-                }
-                if ($tags.data('position') !== posLeft + 'x' + posTop && checkOnly !== true) {
-                    $tags.css(w2utils.cssPrefix({ 'transition': (instant ? '0s' : '.2s') })).css({
-                        left: posLeft + 'px',
-                        top : posTop + 'px'
-                    }).data('position', posLeft + 'x' + posTop);
                 }
                 return { left: posLeft, top: posTop, posClass: posClass };
             }
@@ -2223,7 +2355,7 @@ w2utils.event = {
         // hide previous if any
         if ($('#w2ui-overlay'+ name).length > 0) {
             tmp_hide = $('#w2ui-overlay'+ name)[0].hide;
-            $(document).off('.w2overlayHide');
+            $(document).off('.w2overlay'+ name);
             if (typeof tmp_hide === 'function') tmp_hide();
         }
         if (obj.length > 0 && (obj[0].tagName == null || obj[0].tagName.toUpperCase() == 'BODY')) options.contextMenu = true;
@@ -2256,12 +2388,13 @@ w2utils.event = {
             .data('position', offset.left + 'x' + offset.top)
             .fadeIn('fast')
             .on('click', function (event) {
+                $('#w2ui-overlay'+ name).data('keepOpen', true);
                 // if there is label for input, it will produce 2 click events
                 if (event.target.tagName.toUpperCase() == 'LABEL') event.stopPropagation();
             })
             .on('mousedown', function (event) {
-                $('#w2ui-overlay'+ name).data('keepOpen', true);
-                if (['INPUT', 'TEXTAREA', 'SELECT'].indexOf(event.target.tagName.toUpperCase()) == -1 && !options.selectable) {
+                var tmp = event.target.tagName.toUpperCase();
+                if (['INPUT', 'TEXTAREA', 'SELECT'].indexOf(tmp) == -1 && !options.selectable) {
                     event.preventDefault();
                 }
             });
@@ -2271,7 +2404,7 @@ w2utils.event = {
         // need time to display
         setTimeout(function () {
             resize();
-            $(document).off('.w2overlayHide').on('click.w2overlayHide', hide);
+            $(document).off('.w2overlay'+ name).on('click.w2overlay'+ name, hide);
             if (typeof options.onShow === 'function') options.onShow();
         }, 10);
 
@@ -2304,11 +2437,11 @@ w2utils.event = {
             if (typeof options.onHide === 'function') result = options.onHide();
             if (result === false) return;
             div1.remove();
-            $(document).off('click', hide);
+            $(document).off('.w2overlay'+ name);
             clearInterval(div1.data('timer'));
         }
 
-        function resize () {
+        function resize() {
             var div1 = $('#w2ui-overlay'+ name);
             var div2 = div1.find(' > div');
             var menu = $('#w2ui-overlay'+ name +' div.menu');
@@ -2537,8 +2670,8 @@ w2utils.event = {
                     // need time so that menu first hides
                     setTimeout(function () {
                         options.onSelect({
-                            index: index,
-                            item: options.items[index],
+                            index   : index,
+                            item    : options.items[index],
                             keepOpen: keepOpen,
                             originalEvent: event
                         });
@@ -2564,6 +2697,17 @@ w2utils.event = {
                             tmp.parents('table').find('.w2ui-sel-icon')
                                 .removeClass('w2ui-icon-check')
                                 .addClass('w2ui-icon-empty');
+                        }
+                        // groups of checkboxes
+                        if (options.type == 'check' && item.group != null) {
+                            options.items.forEach(function (sub, ind) {
+                                if (sub.group === item.group && sub.checked) {
+                                    tmp.parents('table').find('tr[index='+ ind +'] .w2ui-icon')
+                                       .removeClass('w2ui-icon-check')
+                                       .addClass('w2ui-icon-empty');
+                                    sub.checked = false;
+                                }
+                            });
                         }
                         tmp.removeClass('w2ui-icon-empty').addClass('w2ui-icon-check');
                     } else if (options.type == 'check') {
@@ -2768,21 +2912,29 @@ w2utils.event = {
     };
 
     $.fn.w2color = function (options, callBack) {
-        var obj   = this;
-        var el    = $(this)[0];
+        var obj = this;
+        var $el = $(this);
+        var el  = $el[0];
+        // no need to init
+        if ($el.data('skipInit')) {
+            $el.removeData('skipInit');
+            return;
+        }
+        // needed for keyboard navigation
         var index = [-1, -1];
         if ($.fn.w2colorPalette == null) {
             $.fn.w2colorPalette = [
-                ['000000', '555555', '888888', 'BBBBBB', 'DDDDDD', 'EEEEEE', 'F7F7F7', 'FFFFFF'],
-                ['FF011B', 'FF9838', 'FFFD59', '01FD55', '00FFFE', '006CE7', '9B24F4', 'FF21F5'],
-                ['FFEAEA', 'FCEFE1', 'FCF5E1', 'EBF7E7', 'E9F3F5', 'ECF4FC', 'EAE6F4', 'F5E7ED'],
-                ['F4CCCC', 'FCE5CD', 'FFF2CC', 'D9EAD3', 'D0E0E3', 'CFE2F3', 'D9D1E9', 'EAD1DC'],
-                ['EA9899', 'F9CB9C', 'FEE599', 'B6D7A8', 'A2C4C9', '9FC5E8', 'B4A7D6', 'D5A6BD'],
-                ['E06666', 'F6B26B', 'FED966', '93C47D', '76A5AF', '6FA8DC', '8E7CC3', 'C27BA0'],
-                ['CC0814', 'E69138', 'F1C232', '6AA84F', '45818E', '3D85C6', '674EA7', 'A54D79'],
-                ['99050C', 'B45F17', 'BF901F', '37761D', '124F5C', '0A5394', '351C75', '741B47'],
+                ['000000', '333333', '555555', '777777', '888888', '999999', 'AAAAAA', 'CCCCCC', 'DDDDDD', 'EEEEEE', 'F7F7F7', 'FFFFFF'],
+
+                ['FF011B', 'FF9838', 'FFC300',  'FFFD59', '86FF14', '14FF7A', '2EFFFC', '2693FF', '006CE7', '9B24F4', 'FF21F5', 'FF0099'],
+                ['FFEAEA', 'FCEFE1', 'FCF4DC',  'FFFECF', 'EBFFD9', 'D9FFE9', 'E0FFFF', 'E8F4FF', 'ECF4FC', 'EAE6F4', 'FFF5FE', 'FCF0F7'],
+                ['F4CCCC', 'FCE5CD', 'FFF1C2',  'FFFDA1', 'D5FCB1', 'B5F7D0', 'BFFFFF', 'D6ECFF', 'CFE2F3', 'D9D1E9', 'FFE3FD', 'FFD9F0'],
+                ['EA9899', 'F9CB9C', 'FFE48C',  'F7F56F', 'B9F77E', '84F0B1', '83F7F7', 'B5DAFF', '9FC5E8', 'B4A7D6', 'FAB9F6', 'FFADDE'],
+                ['E06666', 'F6B26B', 'DEB737',  'E0DE51', '8FDB48', '52D189', '4EDEDB', '76ACE3', '6FA8DC', '8E7CC3', 'E07EDA', 'F26DBD'],
+                ['CC0814', 'E69138', 'AB8816',  'B5B20E', '6BAB30', '27A85F', '1BA8A6', '3C81C7', '3D85C6', '674EA7', 'A14F9D', 'BF4990'],
+                ['99050C', 'B45F17', '80650E',  '737103', '395E14', '10783D', '13615E', '094785', '0A5394', '351C75', '780172', '782C5A']
                 // ['660205', '783F0B', '7F6011', '274E12', '0C343D', '063762', '20124D', '4C1030'],
-                ['F2F2F2', 'F2F2F2', 'F2F2F2', 'F2F2F2', 'F2F2F2'] // custom colors (up to 4)
+                // ['F2F2F2', 'F2F2F2', 'F2F2F2', 'F2F2F2', 'F2F2F2'] // custom colors (up to 4)
             ];
         }
         var pal = $.fn.w2colorPalette;
@@ -2790,24 +2942,22 @@ w2utils.event = {
             color: options,
             transparent: true
         };
+        if (options.onSelect == null && callBack != null) options.onSelect = callBack;
         // add remove transarent color
-        if (options.transparent && pal[0][1] == '555555') {
+        if (options.transparent && pal[0][1] == '333333') {
             pal[0].splice(1, 1);
             pal[0].push('');
         }
-        if (!options.transparent && pal[0][1] != '555555') {
-            pal[0].splice(1, 0, '555555');
+        if (!options.transparent && pal[0][1] != '333333') {
+            pal[0].splice(1, 0, '333333');
             pal[0].pop();
         }
         if (options.color) options.color = String(options.color).toUpperCase();
+        if (options.color.substr(0,1) == '#') options.color = options.color.substr(1);
+        if (options.fireChange == null) options.fireChange = true;
 
         if ($('#w2ui-overlay').length === 0) {
-            $(el).w2overlay(getColorHTML(options), {
-                onHide: function () {
-                    if (typeof callBack == 'function') callBack($(el).data('_color'));
-                    $(el).removeData('_color');
-                }
-            });
+            $(el).w2overlay(getColorHTML(options), options);
         } else { // only refresh contents
             $('#w2ui-overlay .w2ui-color').parent().html(getColorHTML(options));
         }
@@ -2815,14 +2965,35 @@ w2utils.event = {
         $('#w2ui-overlay .color')
             .off('.w2color')
             .on('mousedown.w2color', function (event) {
-                var color = $(event.originalEvent.target).attr('name');
+                var color = '#' + $(event.originalEvent.target).attr('name');
+                if (color == '#') color = '';
                 index = $(event.originalEvent.target).attr('index').split(':');
-                $(el).data('_color', color);
+                if (el.tagName == 'INPUT') {
+                    $(el).val(color).data('skipInit', true);
+                    if (options.fireChange) $(el).change();
+                    $(el).next().find('>div').css('background-color', color);
+                } else {
+                    $(el).data('_color', color);
+                }
+                if (typeof options.onSelect == 'function') options.onSelect(color);
             })
             .on('mouseup.w2color', function () {
                 setTimeout(function () {
                     if ($("#w2ui-overlay").length > 0) $('#w2ui-overlay').removeData('keepOpen')[0].hide();
                 }, 10);
+            });
+        $('#w2ui-overlay .color-original')
+            .off('.w2color')
+            .on('click.w2color', function (event) {
+                // restore original color
+                var tmp = w2utils.parseColor($(event.target).css('background-color'));
+                if (tmp != null) {
+                    rgb = tmp;
+                    hsv = w2utils.rgb2hsv(rgb);
+                    setColor(hsv);
+                    updateSlides();
+                    refreshPalette();
+                }
             });
         $('#w2ui-overlay input')
             .off('.w2color')
@@ -2831,22 +3002,176 @@ w2utils.event = {
                 setTimeout(function () { $('#w2ui-overlay').data('keepOpen', true); }, 10);
                 event.stopPropagation();
             })
-            .on('keyup.w2color', function (event) {
-                if (this.value !== '' && this.value[0] !== '#') this.value = '#' + this.value;
-            })
-            .on('change.w2color', function (event) {
-                var tmp = this.value;
-                if (tmp.substr(0, 1) == '#') tmp = tmp.substr(1);
-                if (tmp.length != 6) {
-                    $(this).w2tag('Invalid color.');
-                    return;
+            .on('change.w2color', function () {
+                var $el = $(this);
+                var val = parseFloat($el.val());
+                var max = parseFloat($el.attr('max'));
+                if (isNaN(val)) val = 0;
+                if (max > 1) val = parseInt(val);
+                if (max > 0 && val > max) {
+                    $el.val(max);
+                    val = max;
                 }
-                $.fn.w2colorPalette[pal.length - 1].unshift(tmp.toUpperCase());
-                $(el).w2color(options, callBack);
-                setTimeout(function() { $('#w2ui-overlay input')[0].focus(); }, 100);
-            })
-            .w2field('hex');
+                if (val < 0) {
+                    $el.val(0);
+                    val = 0;
+                }
+                var name  = $el.attr('name');
+                var color = {};
+                if (['r', 'g', 'b', 'a'].indexOf(name) != -1) {
+                    rgb[name] = val;
+                    hsv = w2utils.rgb2hsv(rgb);
+                } else if (['h', 's', 'v'].indexOf(name) != -1) {
+                    color[name] = val;
+                }
+                setColor(color);
+                updateSlides();
+                refreshPalette();
+            });
+        // advanced color events
+        var initial;
+        var hsv, rgb = w2utils.parseColor(options.color);
+        if (rgb == null) {
+            rgb = { r: 140, g: 150, b: 160, a: 1 };
+            hsv = w2utils.rgb2hsv(rgb);
+        }
+        hsv = w2utils.rgb2hsv(rgb);
 
+        var setColor = function (color, silent) {
+            if (color.h != null) hsv.h = color.h;
+            if (color.s != null) hsv.s = color.s;
+            if (color.v != null) hsv.v = color.v;
+            if (color.a != null) { rgb.a = color.a; hsv.a = color.a; }
+            rgb = w2utils.hsv2rgb(hsv);
+            var newColor = 'rgba('+ rgb.r +','+ rgb.g +','+ rgb.b +','+ rgb.a +')';
+            var cl = [
+                Number(rgb.r).toString(16).toUpperCase(),
+                Number(rgb.g).toString(16).toUpperCase(),
+                Number(rgb.b).toString(16).toUpperCase()
+            ];
+            cl.forEach(function (item, ind) { if (item.length == 1) cl[ind] = '0' + item; });
+            if (rgb.a == 1) {
+                newColor = '#' + cl[0] + cl[1] + cl[2];
+            }
+            $('#w2ui-overlay .color-preview').css('background-color', newColor);
+            $('#w2ui-overlay input').each(function (index, el) {
+                if (el.name) {
+                    if (rgb[el.name] != null) el.value = rgb[el.name];
+                    if (hsv[el.name] != null) el.value = hsv[el.name];
+                    if (el.name == 'a') el.value = rgb.a;
+                }
+            });
+            if (!silent) {
+                if (el.tagName == 'INPUT') {
+                    $(el).val(newColor).data('skipInit', true);
+                    if (options.fireChange) $(el).change();
+                    $(el).next().find('>div').css('background-color', newColor);
+                } else {
+                    $(el).data('_color', newColor);
+                }
+                if (typeof options.onSelect == 'function') options.onSelect(newColor);
+            } else {
+                $('#w2ui-overlay .color-original').css('background-color', newColor);
+            }
+        }
+        var updateSlides = function () {
+            var $el1 = $('#w2ui-overlay .palette .value1');
+            var $el2 = $('#w2ui-overlay .rainbow .value2');
+            var $el3 = $('#w2ui-overlay .alpha .value2');
+            var offset1 = parseInt($el1.width()) / 2;
+            var offset2 = parseInt($el2.width()) / 2;
+            $el1.css({ 'left': hsv.s * 150 / 100 - offset1, 'top': (100 - hsv.v) * 125 / 100 - offset1});
+            $el2.css('left', hsv.h/(360/150) - offset2);
+            $el3.css('left', rgb.a*150 - offset2);
+        }
+        var refreshPalette = function() {
+            var cl  = w2utils.hsv2rgb(hsv.h, 100, 100);
+            var rgb = cl.r + ',' + cl.g + ',' + cl.b;
+            $('#w2ui-overlay .palette').css('background-image',
+                'linear-gradient(90deg, rgba('+ rgb +',0) 0%, rgba(' + rgb + ',1) 100%)');
+        }
+        var mouseDown = function (event) {
+            var $el = $(this).find('.value1, .value2');
+            var offset = parseInt($el.width()) / 2;
+            if ($el.hasClass('move-x')) $el.css({ left: (event.offsetX - offset) + 'px' });
+            if ($el.hasClass('move-y')) $el.css({ top: (event.offsetY - offset) + 'px' });
+            initial = {
+                $el    : $el,
+                x      : event.pageX,
+                y      : event.pageY,
+                width  : $el.parent().width(),
+                height : $el.parent().height(),
+                left   : parseInt($el.css('left')),
+                top    : parseInt($el.css('top'))
+            };
+            mouseMove(event);
+            $('body').off('.w2color')
+                .on(mMove, mouseMove)
+                .on(mUp, mouseUp);
+        };
+        var mouseUp = function(event) {
+            $('body').off('.w2color');
+        };
+        var mouseMove = function(event) {
+            var $el    = initial.$el;
+            var divX   = event.pageX - initial.x;
+            var divY   = event.pageY - initial.y;
+            var newX   = initial.left + divX;
+            var newY   = initial.top + divY;
+            var offset = parseInt($el.width()) / 2;
+            if (newX < -offset) newX = -offset;
+            if (newY < -offset) newY = -offset;
+            if (newX > initial.width - offset)  newX = initial.width - offset;
+            if (newY > initial.height - offset) newY = initial.height - offset
+            if ($el.hasClass('move-x')) $el.css({ left : newX + 'px' });
+            if ($el.hasClass('move-y')) $el.css({ top : newY + 'px' });
+            // move
+            var x = parseInt($el.css('left')) + offset;
+            var y = parseInt($el.css('top')) + offset;
+            var name = $el.parent().attr('name');
+            // console.log(name, x, y, Math.round(x / $el.parent().width() * 100), Math.round(100 - (y / $el.parent().height() * 100)));
+            if (name == 'palette') {
+                setColor({
+                    s: Math.round(x / $el.parent().width() * 100),
+                    v: Math.round(100 - (y / $el.parent().height() * 100))
+                });
+            }
+            if (name == 'rainbow') {
+                var h = Math.round(360 / 150 * x);
+                setColor({ h: h });
+                refreshPalette();
+            }
+            if (name == 'alpha') {
+                setColor({ a: parseFloat(Number(x / 150).toFixed(2)) });
+            }
+        }
+        if ($.fn._colorAdvanced === true || options.advanced === true) {
+            $('#w2ui-overlay .w2ui-color-tabs :nth-child(2)').click();
+        }
+        setColor({}, true);
+        refreshPalette();
+        updateSlides();
+
+        // Events of iOS
+        var mDown = 'mousedown.w2color';
+        var mUp   = 'mouseup.w2color';
+        var mMove = 'mousemove.w2color';
+        if (w2utils.isIOS) {
+            mDown = 'touchstart.w2color';
+            mUp   = 'touchend.w2color';
+            mMove = 'touchmove.w2color  ';
+        }
+        $('#w2ui-overlay .palette')
+            .off('.w2color')
+            .on('mousedown.w2color', mouseDown);
+        $('#w2ui-overlay .rainbow')
+            .off('.w2color')
+            .on('mousedown.w2color', mouseDown);
+        $('#w2ui-overlay .alpha')
+            .off('.w2color')
+            .on('mousedown.w2color', mouseDown);
+
+        // keyboard navigation
         el.nav = function (direction) {
             switch (direction) {
                 case 'up':
@@ -2873,14 +3198,16 @@ w2utils.event = {
         };
 
         function getColorHTML(options) {
-            var color = options.color;
-            var html  = '<div class="w2ui-color" onmousedown="event.stopPropagation(); event.preventDefault()">'+ // prevent default is needed otherwiser selection gets unselected
+            var color = options.color, bor;
+            var html  = '<div class="w2ui-color" onmousedown="jQuery(this).parents(\'.w2ui-overlay\').data(\'keepOpen\', true)">'+
+                        '<div class="w2ui-color-palette">'+
                         '<table cellspacing="5"><tbody>';
-            for (var i = 0; i < pal.length - 1; i++) {
+            for (var i = 0; i < pal.length; i++) {
                 html += '<tr>';
                 for (var j = 0; j < pal[i].length; j++) {
+                    if (pal[i][j] == 'FFFFFF') bor = ';border: 1px solid #efefef'; else bor = '';
                     html += '<td>'+
-                            '    <div class="color '+ (pal[i][j] === '' ? 'no-color' : '') +'" style="background-color: #'+ pal[i][j] +';" ' +
+                            '    <div class="color '+ (pal[i][j] === '' ? 'no-color' : '') +'" style="background-color: #'+ pal[i][j] + bor +';" ' +
                             '       name="'+ pal[i][j] +'" index="'+ i + ':' + j +'">'+ (options.color == pal[i][j] ? '&#149;' : '&#160;') +
                             '    </div>'+
                             '</td>';
@@ -2889,19 +3216,69 @@ w2utils.event = {
                 html += '</tr>';
                 if (i < 2) html += '<tr><td style="height: 8px" colspan="8"></td></tr>';
             }
-            var tmp = pal[pal.length - 1];
-            html += '<tr><td style="height: 8px" colspan="8"></td></tr>'+
-                    '<tr>'+
-                    '   <td colspan="4" style="text-align: left"><input placeholder="#FFF000" style="margin-left: 1px; width: 74px" maxlength="7"/></td>'+
-                    '   <td><div class="color" style="background-color: #'+ tmp[0] +';" name="'+ tmp[0] +'" index="8:0">'+ (options.color == tmp[0] ? '&#149;' : '&#160;') +'</div></td>'+
-                    '   <td><div class="color" style="background-color: #'+ tmp[1] +';" name="'+ tmp[1] +'" index="8:0">'+ (options.color == tmp[1] ? '&#149;' : '&#160;') +'</div></td>'+
-                    '   <td><div class="color" style="background-color: #'+ tmp[2] +';" name="'+ tmp[2] +'" index="8:0">'+ (options.color == tmp[2] ? '&#149;' : '&#160;') +'</div></td>'+
-                    '   <td><div class="color" style="background-color: #'+ tmp[3] +';" name="'+ tmp[3] +'" index="8:0">'+ (options.color == tmp[3] ? '&#149;' : '&#160;') +'</div></td>'+
-                    '</tr>'+
-                    '<tr><td style="height: 4px" colspan="8"></td></tr>';
-            html += '</tbody></table></div>';
+            html += '</tbody></table>'+
+                    '</div>';
+            if (true) {
+                html += '<div class="w2ui-color-advanced" style="display: none">'+
+                        '   <div class="color-info">'+
+                        '       <div class="color-preview-bg"><div class="color-preview"></div><div class="color-original"></div></div>'+
+                        '       <div class="color-part">'+
+                        '           <span>H</span> <input name="h" maxlength="3" max="360" tabindex="101">'+
+                        '           <span>R</span> <input name="r" maxlength="3" max="255" tabindex="104">'+
+                        '       </div>'+
+                        '       <div class="color-part">'+
+                        '           <span>S</span> <input name="s" maxlength="3" max="100" tabindex="102">'+
+                        '           <span>G</span> <input name="g" maxlength="3" max="255" tabindex="105">'+
+                        '       </div>'+
+                        '       <div class="color-part">'+
+                        '           <span>V</span> <input name="v" maxlength="3" max="100" tabindex="103">'+
+                        '           <span>B</span> <input name="b" maxlength="3" max="255" tabindex="106">'+
+                        '       </div>'+
+                        '       <div class="color-part" style="margin: 30px 0px 0px 2px">'+
+                        '           <span style="width: 40px">Opacity</span> '+
+                        '           <input name="a" maxlength="5" max="1" style="width: 32px !important" tabindex="107">'+
+                        '       </div>'+
+                        '   </div>'+
+                        '   <div class="palette" name="palette">'+
+                        '       <div class="palette-bg"></div>'+
+                        '       <div class="value1 move-x move-y"></div>'+
+                        '   </div>'+
+                        '   <div class="rainbow" name="rainbow">'+
+                        '       <div class="value2 move-x"></div>'+
+                        '   </div>'+
+                        '   <div class="alpha" name="alpha">'+
+                        '       <div class="alpha-bg"></div>'+
+                        '       <div class="value2 move-x"></div>'+
+                        '   </div>'+
+                        '</div>';
+            }
+            html += '<div class="w2ui-color-tabs">'+
+                    '   <div class="w2ui-color-tab selected" onclick="jQuery(this).addClass(\'selected\').next().removeClass(\'selected\').parents(\'.w2ui-overlay\').find(\'.w2ui-color-advanced\').hide().parent().find(\'.w2ui-color-palette\').show(); jQuery.fn._colorAdvanced = false; jQuery(\'#w2ui-overlay\')[0].resize()"><span class="w2ui-icon w2ui-icon-colors"></span></div>'+
+                    '   <div class="w2ui-color-tab" onclick="jQuery(this).addClass(\'selected\').prev().removeClass(\'selected\').parents(\'.w2ui-overlay\').find(\'.w2ui-color-advanced\').show().parent().find(\'.w2ui-color-palette\').hide(); jQuery.fn._colorAdvanced = true; jQuery(\'#w2ui-overlay\')[0].resize()"><span class="w2ui-icon w2ui-icon-settings"></span></div>'+
+                    '</div>'+
+                    '</div>'+
+                    '<div style="clear: both; height: 0"></div>';
             return html;
         }
     };
 
 })(jQuery);
+
+/***********************************************************
+*  Compatibility with CommonJS and AMD modules
+*
+*********************************************************/
+
+(function(global, w2ui) {
+    if (typeof define=='function' && define.amd) {
+        return define(function(){ return w2ui; });
+    }
+    if (typeof exports!='undefined') {
+        if (typeof module!='undefined' && module.exports)
+            return exports = module.exports = w2ui;
+        global = exports;
+    }
+    for (var m in w2ui) {
+        global[m] = w2ui[m];
+    }
+})(this, { w2ui: w2ui, w2obj: w2obj, w2utils: w2utils });
