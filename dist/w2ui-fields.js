@@ -89,6 +89,7 @@ var w2utils = (function ($) {
         lock            : lock,
         unlock          : unlock,
         message         : message,
+        naturalCompare  : naturalCompare,
         lang            : lang,
         locale          : locale,
         getSize         : getSize,
@@ -108,7 +109,9 @@ var w2utils = (function ($) {
         // some internal variables
         isIOS : ((navigator.userAgent.toLowerCase().indexOf('iphone') != -1 ||
                  navigator.userAgent.toLowerCase().indexOf('ipod') != -1 ||
-                 navigator.userAgent.toLowerCase().indexOf('ipad') != -1)
+                 navigator.userAgent.toLowerCase().indexOf('ipad') != -1 ||
+                 navigator.userAgent.toLowerCase().indexOf('mobile') != -1 ||
+                 navigator.userAgent.toLowerCase().indexOf('android') != -1)
                  ? true : false),
         isIE : ((navigator.userAgent.toLowerCase().indexOf('msie') != -1 ||
                  navigator.userAgent.toLowerCase().indexOf('trident') != -1 )
@@ -154,7 +157,7 @@ var w2utils = (function ($) {
     }
 
     function isEmail (val) {
-        var email = /^[a-zA-Z0-9._%-+]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
+        var email = /^[-a-zA-Z0-9._%-+]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
         return email.test(val);
     }
 
@@ -1747,6 +1750,54 @@ var w2utils = (function ($) {
         }
     }
 
+    /*! from litejs.com / MIT Licence
+        https://github.com/litejs/natural-compare-lite/blob/master/index.js */
+    /*
+     * @version    1.4.0
+     * @date       2015-10-26
+     * @stability  3 - Stable
+     * @author     Lauri Rooden (https://github.com/litejs/natural-compare-lite)
+     * @license    MIT License
+     */
+    function naturalCompare(a, b) {
+        var i, codeA
+        , codeB = 1
+        , posA = 0
+        , posB = 0
+        , alphabet = String.alphabet
+
+        function getCode(str, pos, code) {
+            if (code) {
+                for (i = pos; code = getCode(str, i), code < 76 && code > 65;) ++i;
+                return +str.slice(pos - 1, i)
+            }
+            code = alphabet && alphabet.indexOf(str.charAt(pos))
+            return code > -1 ? code + 76 : ((code = str.charCodeAt(pos) || 0), code < 45 || code > 127) ? code
+                : code < 46 ? 65               // -
+                : code < 48 ? code - 1
+                : code < 58 ? code + 18        // 0-9
+                : code < 65 ? code - 11
+                : code < 91 ? code + 11        // A-Z
+                : code < 97 ? code - 37
+                : code < 123 ? code + 5        // a-z
+                : code - 63
+        }
+
+
+        if ((a+="") != (b+="")) for (;codeB;) {
+            codeA = getCode(a, posA++)
+            codeB = getCode(b, posB++)
+
+            if (codeA < 76 && codeB < 76 && codeA > 66 && codeB > 66) {
+                codeA = getCode(a, posA, posA)
+                codeB = getCode(b, posB, posA = i)
+                posB = i
+            }
+
+            if (codeA != codeB) return (codeA < codeB) ? -1 : 1
+        }
+        return 0
+    }
 })(jQuery);
 
 /***********************************************************
@@ -2591,6 +2642,11 @@ w2utils.event = {
                 if (overflowY && options.align != 'both') div2.width(w + w2utils.scrollBarSize() + 2);
             }
             menu.css('overflow-y', 'auto');
+
+            // if outer div is bigger, match the size
+            if (div2.height() < div1.height()) {
+                div2.css('height', div1.height() + 'px');
+            }
         }
     };
 
@@ -2668,22 +2724,19 @@ w2utils.event = {
                     if (event.shiftKey || event.metaKey || event.ctrlKey) keepOpen = true;
                 }
                 if (typeof options.onSelect === 'function') {
-                    // need time so that menu first hides
-                    setTimeout(function () {
-                        options.onSelect({
-                            index   : index,
-                            item    : options.items[index],
-                            keepOpen: keepOpen,
-                            originalEvent: event
-                        });
-                    }, 10);
+                    options.onSelect({
+                        index   : index,
+                        item    : options.items[index],
+                        keepOpen: keepOpen,
+                        originalEvent: event
+                    });
                 }
                 // do not uncomment (or enum search type is not working in grid)
                 // setTimeout(function () { $(document).click(); }, 50);
                 // -- hide
                 var div = $('#w2ui-overlay'+ name);
                 div.removeData('keepOpen');
-                if (typeof div[0].hide === 'function' && !keepOpen) {
+                if (div.length > 0 && typeof div[0].hide === 'function' && !keepOpen) {
                     div[0].hide();
                 }
             };
@@ -2926,7 +2979,6 @@ w2utils.event = {
         if ($.fn.w2colorPalette == null) {
             $.fn.w2colorPalette = [
                 ['000000', '333333', '555555', '777777', '888888', '999999', 'AAAAAA', 'CCCCCC', 'DDDDDD', 'EEEEEE', 'F7F7F7', 'FFFFFF'],
-
                 ['FF011B', 'FF9838', 'FFC300',  'FFFD59', '86FF14', '14FF7A', '2EFFFC', '2693FF', '006CE7', '9B24F4', 'FF21F5', 'FF0099'],
                 ['FFEAEA', 'FCEFE1', 'FCF4DC',  'FFFECF', 'EBFFD9', 'D9FFE9', 'E0FFFF', 'E8F4FF', 'ECF4FC', 'EAE6F4', 'FFF5FE', 'FCF0F7'],
                 ['F4CCCC', 'FCE5CD', 'FFF1C2',  'FFFDA1', 'D5FCB1', 'B5F7D0', 'BFFFFF', 'D6ECFF', 'CFE2F3', 'D9D1E9', 'FFE3FD', 'FFD9F0'],
@@ -2934,8 +2986,6 @@ w2utils.event = {
                 ['E06666', 'F6B26B', 'DEB737',  'E0DE51', '8FDB48', '52D189', '4EDEDB', '76ACE3', '6FA8DC', '8E7CC3', 'E07EDA', 'F26DBD'],
                 ['CC0814', 'E69138', 'AB8816',  'B5B20E', '6BAB30', '27A85F', '1BA8A6', '3C81C7', '3D85C6', '674EA7', 'A14F9D', 'BF4990'],
                 ['99050C', 'B45F17', '80650E',  '737103', '395E14', '10783D', '13615E', '094785', '0A5394', '351C75', '780172', '782C5A']
-                // ['660205', '783F0B', '7F6011', '274E12', '0C343D', '063762', '20124D', '4C1030'],
-                // ['F2F2F2', 'F2F2F2', 'F2F2F2', 'F2F2F2', 'F2F2F2'] // custom colors (up to 4)
             ];
         }
         var pal = $.fn.w2colorPalette;
@@ -2954,23 +3004,22 @@ w2utils.event = {
             pal[0].pop();
         }
         if (options.color) options.color = String(options.color).toUpperCase();
-        if (options.color.substr(0,1) == '#') options.color = options.color.substr(1);
+        if (typeof options.color == 'string' && options.color.substr(0,1) == '#') options.color = options.color.substr(1);
         if (options.fireChange == null) options.fireChange = true;
 
         if ($('#w2ui-overlay').length === 0) {
             $(el).w2overlay(getColorHTML(options), options);
         } else { // only refresh contents
             $('#w2ui-overlay .w2ui-color').parent().html(getColorHTML(options));
+            $('#w2ui-overlay').show();
         }
         // bind events
         $('#w2ui-overlay .color')
             .off('.w2color')
             .on('mousedown.w2color', function (event) {
-                var color = '#' + $(event.originalEvent.target).attr('name');
-                if (color == '#') color = '';
+                var color = $(event.originalEvent.target).attr('name'); // should not have #
                 index = $(event.originalEvent.target).attr('index').split(':');
                 if (el.tagName == 'INPUT') {
-                    $(el).val(color).data('skipInit', true);
                     if (options.fireChange) $(el).change();
                     $(el).next().find('>div').css('background-color', color);
                 } else {
@@ -3052,7 +3101,7 @@ w2utils.event = {
             ];
             cl.forEach(function (item, ind) { if (item.length == 1) cl[ind] = '0' + item; });
             if (rgb.a == 1) {
-                newColor = '#' + cl[0] + cl[1] + cl[2];
+                newColor = cl[0] + cl[1] + cl[2];
             }
             $('#w2ui-overlay .color-preview').css('background-color', newColor);
             $('#w2ui-overlay input').each(function (index, el) {
@@ -3126,15 +3175,15 @@ w2utils.event = {
             if (newY > initial.height - offset) newY = initial.height - offset
             if ($el.hasClass('move-x')) $el.css({ left : newX + 'px' });
             if ($el.hasClass('move-y')) $el.css({ top : newY + 'px' });
+
             // move
+            var name = $el.parent().attr('name');
             var x = parseInt($el.css('left')) + offset;
             var y = parseInt($el.css('top')) + offset;
-            var name = $el.parent().attr('name');
-            // console.log(name, x, y, Math.round(x / $el.parent().width() * 100), Math.round(100 - (y / $el.parent().height() * 100)));
             if (name == 'palette') {
                 setColor({
-                    s: Math.round(x / $el.parent().width() * 100),
-                    v: Math.round(100 - (y / $el.parent().height() * 100))
+                    s: Math.round(x / initial.width * 100),
+                    v: Math.round(100 - (y / initial.height * 100))
                 });
             }
             if (name == 'rainbow') {
@@ -3148,6 +3197,7 @@ w2utils.event = {
         }
         if ($.fn._colorAdvanced === true || options.advanced === true) {
             $('#w2ui-overlay .w2ui-color-tabs :nth-child(2)').click();
+            $('#w2ui-overlay').removeData('keepOpen');
         }
         setColor({}, true);
         refreshPalette();
@@ -3595,7 +3645,7 @@ w2utils.event = {
                         if (!$.isPlainObject(options.selected) && options.items) {
                             for (var i = 0; i< options.items.length; i++) {
                                 var item = options.items[i];
-                                if (item && item.id == options.selected) {
+                                if (item && item.id === options.selected) {
                                     options.selected = $.extend(true, {}, item);
                                     break;
                                 }
@@ -4169,10 +4219,15 @@ w2utils.event = {
             }
             // color
             if (this.type == 'color') {
-                var color = '#' + $(this.el).val();
-                if ($(this.el).val().length != 6 && $(this.el).val().length != 3) color = '';
+                var color = $(this.el).val();
+                if (color.substr(0, 3).toLowerCase() != 'rgb') {
+                    color = '#' + color;
+                    if ($(this.el).val().length != 6 && $(this.el).val().length != 3) color = '';
+                }
                 $(this.el).next().find('div').css('background-color', color);
-                if ($(obj.el).is(':focus')) this.updateOverlay();
+                if ($(this.el).is(':focus') && $(this.el).data('skipInit') !== true) {
+                    this.updateOverlay();
+                }
             }
             // list, enum
             if (['list', 'enum', 'file'].indexOf(this.type) != -1) {
@@ -4237,9 +4292,20 @@ w2utils.event = {
             var obj     = this;
             var options = obj.options;
             var val     = $(obj.el).val().trim();
+            var $overlay = $("#w2ui-overlay");
+
             // hide overlay
             if (['color', 'date', 'time', 'list', 'combo', 'enum', 'datetime'].indexOf(obj.type) != -1) {
-                if ($("#w2ui-overlay").length > 0) $('#w2ui-overlay')[0].hide();
+                var closeTimeout = window.setTimeout(function() {
+                    if ($overlay.data('keepOpen') !== true) $overlay.hide();
+                }, 0);
+
+                $(".menu", $overlay).one('focus', function() {
+                    clearTimeout(closeTimeout);
+                    $(this).one('focusout', function(event) {
+                        $overlay.hide();
+                    })
+                });
             }
             if (['int', 'float', 'money', 'currency', 'percent'].indexOf(obj.type) != -1) {
                 if (val !== '' && !obj.checkType(val)) {
@@ -5130,7 +5196,7 @@ w2utils.event = {
                     var sel = $(input).data('selected');
                     if ($.isPlainObject(sel) && !$.isEmptyObject(sel) && options.index == -1) {
                         options.items.forEach(function (item, ind) {
-                            if (item.id == sel.id) {
+                            if (item.id === sel.id) {
                                 options.index = ind;
                             }
                         });

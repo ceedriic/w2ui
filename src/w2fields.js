@@ -309,7 +309,7 @@
                         if (!$.isPlainObject(options.selected) && options.items) {
                             for (var i = 0; i< options.items.length; i++) {
                                 var item = options.items[i];
-                                if (item && item.id == options.selected) {
+                                if (item && item.id === options.selected) {
                                     options.selected = $.extend(true, {}, item);
                                     break;
                                 }
@@ -883,10 +883,15 @@
             }
             // color
             if (this.type == 'color') {
-                var color = '#' + $(this.el).val();
-                if ($(this.el).val().length != 6 && $(this.el).val().length != 3) color = '';
+                var color = $(this.el).val();
+                if (color.substr(0, 3).toLowerCase() != 'rgb') {
+                    color = '#' + color;
+                    if ($(this.el).val().length != 6 && $(this.el).val().length != 3) color = '';
+                }
                 $(this.el).next().find('div').css('background-color', color);
-                if ($(obj.el).is(':focus')) this.updateOverlay();
+                if ($(this.el).is(':focus') && $(this.el).data('skipInit') !== true) {
+                    this.updateOverlay();
+                }
             }
             // list, enum
             if (['list', 'enum', 'file'].indexOf(this.type) != -1) {
@@ -951,9 +956,20 @@
             var obj     = this;
             var options = obj.options;
             var val     = $(obj.el).val().trim();
+            var $overlay = $("#w2ui-overlay");
+
             // hide overlay
             if (['color', 'date', 'time', 'list', 'combo', 'enum', 'datetime'].indexOf(obj.type) != -1) {
-                if ($("#w2ui-overlay").length > 0) $('#w2ui-overlay')[0].hide();
+                var closeTimeout = window.setTimeout(function() {
+                    if ($overlay.data('keepOpen') !== true) $overlay.hide();
+                }, 0);
+
+                $(".menu", $overlay).one('focus', function() {
+                    clearTimeout(closeTimeout);
+                    $(this).one('focusout', function(event) {
+                        $overlay.hide();
+                    })
+                });
             }
             if (['int', 'float', 'money', 'currency', 'percent'].indexOf(obj.type) != -1) {
                 if (val !== '' && !obj.checkType(val)) {
@@ -1844,7 +1860,7 @@
                     var sel = $(input).data('selected');
                     if ($.isPlainObject(sel) && !$.isEmptyObject(sel) && options.index == -1) {
                         options.items.forEach(function (item, ind) {
-                            if (item.id == sel.id) {
+                            if (item.id === sel.id) {
                                 options.index = ind;
                             }
                         });
