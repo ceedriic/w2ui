@@ -147,7 +147,7 @@ var w2utils = (function ($) {
     }
 
     function isHex (val) {
-        var re = /^[a-fA-F0-9]+$/;
+        var re = /^(0x)?[0-9a-fA-F]+$/;
         return re.test(val);
     }
 
@@ -1462,11 +1462,11 @@ var w2utils = (function ($) {
         if (translation == null) return phrase; else return translation;
     }
 
-    function locale (locale) {
+    function locale (locale, callBack) {
         if (!locale) locale = 'en-us';
 
         // if the locale is an object, not a string, than we assume it's a
-        if(typeof locale !== "string" ) {
+        if (typeof locale !== "string" ) {
             w2utils.settings = $.extend(true, w2utils.settings, locale);
             return;
         }
@@ -1481,9 +1481,9 @@ var w2utils = (function ($) {
             url      : locale,
             type     : "GET",
             dataType : "JSON",
-            async    : false,
             success  : function (data, status, xhr) {
                 w2utils.settings = $.extend(true, w2utils.settings, data);
+                if (typeof callBack == 'function') callBack();
             },
             error    : function (xhr, status, msg) {
                 console.log('ERROR: Cannot load locale '+ locale);
@@ -8371,8 +8371,8 @@ w2utils.event = {
             // event before
             var edata = this.trigger({ phase: 'before', target: this.name, type: 'destroy' });
             if (edata.isCancelled === true) return;
-            // remove events
-            $(window).off('resize.w2ui-'+ this.name);
+            // remove all events
+            $(this.box).off();
             // clean up
             if (typeof this.toolbar == 'object' && this.toolbar.destroy) this.toolbar.destroy();
             if ($(this.box).find('#grid_'+ this.name +'_body').length > 0) {
@@ -10429,8 +10429,8 @@ w2utils.event = {
             var col = this.columns[col_ind];
             if (col == null) return '';
             var record        = (summary !== true ? this.records[ind] : this.summary[ind]);
-            var data          = this.getCellValue(ind, col_ind, summary);
-            var edit          = this.getCellEditable(ind, col_ind);
+            var data          = (ind !== -1 ? this.getCellValue(ind, col_ind, summary) : '');
+            var edit          = (ind !== -1 ? this.getCellEditable(ind, col_ind) : '');
             var style         = 'max-height: '+ parseInt(this.recordHeight) +'px;';
             var isChanged     = !summary && record && record.w2ui && record.w2ui.changes && record.w2ui.changes[col.field] != null;
             var addStyle      = '';
@@ -10483,7 +10483,7 @@ w2utils.event = {
                     ' onclick="event.stopPropagation(); w2ui[\''+ this.name + '\'].showBubble('+ ind +', '+ col_ind +')"></span>';
             }
             // various renderers
-            if (col.render != null) {
+            if (col.render != null && ind !== -1) {
                 if (typeof col.render == 'function') {
                     data = $.trim(col.render.call(this, record, ind, col_ind, data));
                     if (data.length < 4 || data.substr(0, 4).toLowerCase() != '<div') {
