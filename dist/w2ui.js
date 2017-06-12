@@ -5394,7 +5394,7 @@ w2utils.event = {
                 for (var i = 0; i < field.length; i++) {
                     var data   = field[i];
                     var search = this.getSearch(data.field);
-                    if (search == null) search = { type: 'text', operator: 'begins' };
+                    if (search == null) search = { type: 'text', operator: this.textSearch };
                     if ($.isArray(data.value)) {
                         for (var j = 0; j < data.value.length; j++) {
                             if (typeof data.value[j] == 'string') data.value[j] = data.value[j].toLowerCase();
@@ -9565,7 +9565,7 @@ w2utils.event = {
                 var operator  = operators[0]; // default operator
                 if ($.isPlainObject(operator)) operator = operator.oper;
                 if (typeof search.options != 'object') search.options = {};
-                if (search.type == 'text') operator = 'begins'; // default operator for text
+                if (search.type == 'text') operator = this.textSearch;
                 // only accept search.operator if it is valid
                 for (var i = 0; i < operators.length; i++) {
                     var oper = operators[i];
