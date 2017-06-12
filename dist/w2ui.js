@@ -1976,7 +1976,7 @@ w2utils.event = {
             if ((t.edata.type === edata.type || edata.type === '*' || (t.edata.scope != null && edata.type == '')) &&
                 (t.edata.target === edata.target || edata.target == null) &&
                 (t.edata.execute === edata.execute || edata.execute == null) &&
-                (t.handler === handler || handler == null || (scope != null && t.edata.scope == scope)))
+                ((t.handler === handler && handler != null) || (scope != null && t.edata.scope == scope)))
             {
                 // match
             } else {
@@ -6119,7 +6119,7 @@ w2utils.event = {
                         val = w2utils.formatNumber(val);
                     }
                     if (edit.type == 'date') {
-                        val = w2utils.formatDate(w2utils.isDate(val, edit.format, true), edit.format);
+                        val = w2utils.formatDate(w2utils.isDate(val, edit.format, true) || new Date(), edit.format);
                     }
                     if (value == null) el.find('input').val(typeof val != 'object' ? val : '');
                     // init w2field
@@ -10896,7 +10896,7 @@ w2utils.event = {
                     val = '';
                 }
                 return val;
-            } else {
+            } else {
                 return obj ? obj[field] : '';
             }
         },
@@ -15978,6 +15978,8 @@ var w2prompt = function (label, title, callBack) {
                         silent          : true,
                         icon            : null,
                         iconStyle       : '',
+                        align           : 'both',       // same width as control
+                        altRows         : true,         // alternate row color
                         onSearch        : null,         // when search needs to be performed
                         onRequest       : null,         // when request is submitted
                         onLoad          : null,         // when data is received
@@ -16008,10 +16010,7 @@ var w2prompt = function (label, title, callBack) {
                         }
                         this.watchSize();
                     }
-                    options = $.extend({}, defaults, options, {
-                        align   : 'both',      // same width as control
-                        altRows : true         // alternate row color
-                    });
+                    options = $.extend({}, defaults, options);
                     this.options = options;
                     if (!$.isPlainObject(options.selected)) options.selected = {};
                     $(this.el).data('selected', options.selected);
@@ -16046,6 +16045,8 @@ var w2prompt = function (label, title, callBack) {
                         maxDropWidth    : null,          // if null then auto set
                         match           : 'contains',    // ['contains', 'is', 'begins', 'ends']
                         silent          : true,
+                        align           : 'both',        // same width as control
+                        altRows         : true,          // alternate row color
                         openOnFocus     : false,         // if to show overlay onclick or when typing
                         markSearch      : true,
                         renderDrop      : null,          // render function for drop down item
@@ -16065,11 +16066,7 @@ var w2prompt = function (label, title, callBack) {
                         onMouseOut      : null,          // when an item is mouse out
                         onScroll        : null           // when div with selected items is scrolled
                     };
-                    options = $.extend({}, defaults, options, {
-                        align    : 'both',    // same width as control
-                        suffix   : '',
-                        altRows  : true       // alternate row color
-                    });
+                    options = $.extend({}, defaults, options, { suffix: '' });
                     options.items    = this.normMenu(options.items);
                     options.selected = this.normMenu(options.selected);
                     this.options = options;
@@ -16096,6 +16093,8 @@ var w2prompt = function (label, title, callBack) {
                         maxDropWidth  : null,     // if null then auto set
                         readContent   : true,     // if true, it will readAsDataURL content of the file
                         silent        : true,
+                        align         : 'both',   // same width as control
+                        altRows       : true,     // alternate row color
                         renderItem    : null,     // render selected item
                         style         : '',       // style for container div
                         onClick       : null,     // when an item is clicked
@@ -16104,10 +16103,7 @@ var w2prompt = function (label, title, callBack) {
                         onMouseOver   : null,     // when an item is mouse over
                         onMouseOut    : null      // when an item is mouse out
                     };
-                    options = $.extend({}, defaults, options, {
-                        align         : 'both',   // same width as control
-                        altRows        : true     // alternate row color
-                    });
+                    options = $.extend({}, defaults, options);
                     this.options = options;
                     if (!$.isArray(options.selected)) options.selected = [];
                     $(this.el).data('selected', options.selected);
