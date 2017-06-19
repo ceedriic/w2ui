@@ -4379,6 +4379,16 @@ w2utils.event = {
                     if (sdata  == null) continue;
                     if (search == null) search = { field: sdata.field, type: sdata.type };
                     var val1b = obj.parseField(rec, search.field);
+                    if (sdata.nullok && (val1b === null || val1b === undefined)) {
+                        if (sdata.required || obj.last.logic == 'AND') {
+                            andTot++;
+                            andNb++;
+                        } else {
+                            orTot++;
+                            orNb++;
+                        }
+                        continue;
+                    }
                     var val1 = (val1b !== null && val1b !== undefined &&
                         (typeof val1b != "object" || val1b.toString != defaultToString)) ?
                         String(val1b).toLowerCase() : "";  // do not match a bogus string
