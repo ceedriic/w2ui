@@ -2678,7 +2678,35 @@
         },
 
         editField: function (recid, column, value, event) {
-            var obj    = this;
+            var obj = this;
+            if (this.last.inEditMode === true) { // already editing
+                if (event.keyCode == 13) {
+                    var index  = this.last._edit.index;
+                    var column = this.last._edit.column;
+                    var recid  = this.last._edit.recid;
+                    this.editChange({ type: 'custom', value: this.last._edit.value }, this.get(recid, true), column, event);
+                    var next = event.shiftKey ? this.prevRow(index, column) : this.nextRow(index, column);
+                    if (next != null && next != index) {
+                        setTimeout(function () {
+                            if (obj.selectType != 'row') {
+                                obj.selectNone();
+                                obj.select({ recid: obj.records[next].recid, column: column });
+                            } else {
+                                obj.editField(obj.records[next].recid, column, null, event);
+                            }
+                        }, 1);
+                    }
+                    this.last.inEditMode = false;
+                } else {
+                    // when 2 chars entered fast
+                    var $input = $(this.box).find('div.w2ui-edit-box .w2ui-input');
+                    if ($input.length > 0 && $input[0].tagName == 'DIV') {
+                        $input.text($input.text() + value);
+                        w2utils.setCursorPosition($input[0], $input.text().length);
+                    }
+                }
+                return;
+            }
             var index  = obj.get(recid, true);
             var edit   = obj.getCellEditable(index, column);
             if (!edit) return;
@@ -2695,9 +2723,10 @@
             if (edata.isCancelled === true) return;
             value = edata.value;
             // default behaviour
+            this.last.inEditMode = true;
+            this.last._edit = { value: value, index: index, column: column, recid: recid };
             this.selectNone();
             this.select({ recid: recid, column: column });
-            this.last.edit_col = column;
             if (['checkbox', 'check'].indexOf(edit.type) != -1) return;
             // create input element
             var tr = $('#grid_'+ obj.name + prefix +'rec_' + w2utils.escapeId(recid));
@@ -2818,6 +2847,7 @@
             }
 
             setTimeout(function () {
+                if (!obj.last.inEditMode) return;
                 el.find('input, select, div.w2ui-input')
                     .data('old_value', old_value)
                     .on('mousedown', function (event) {
@@ -2939,8 +2969,9 @@
                     });
                 // focus and select
                 setTimeout(function () {
+                    if (!obj.last.inEditMode) return;
                     var tmp = el.find('.w2ui-input');
-                    var len = $(tmp).val().length;
+                    var len = ($(tmp).val() != null ? $(tmp).val().length : 0);
                     if (edit.type == 'div') len = $(tmp).text().length;
                     if (tmp.length > 0) {
                         tmp.focus();
@@ -3008,7 +3039,7 @@
             while (true) {
                 new_val = edata.value_new;
                 if ((typeof new_val != 'object' && String(old_val) != String(new_val)) ||
-                    (typeof new_val == 'object' && new_val.id != old_val && (typeof old_val != 'object' || old_val == null || new_val.id != old_val.id))) {
+                    (typeof new_val == 'object' && new_val && new_val.id != old_val && (typeof old_val != 'object' || old_val == null || new_val.id != old_val.id))) {
                     // change event
                     edata = this.trigger($.extend(edata, { type: 'change', phase: 'before' }));
                     if (edata.isCancelled !== true) {
@@ -3057,6 +3088,7 @@
             if (this.show.toolbarSave) {
                 if (this.getChanges().length > 0) this.toolbar.enable('w2ui-save'); else this.toolbar.disable('w2ui-save');
             }
+            obj.last.inEditMode = false;
         },
 
         "delete": function (force) {
@@ -3403,7 +3435,9 @@
                             }
                         }
                         // edit last column that was edited
-                        if (this.selectType == 'row' && this.last.edit_col) columns = [this.last.edit_col];
+                        if (this.selectType == 'row' && this.last._edit.column) {
+                            columns = [this.last._edit.column];
+                        }
                         if (columns.length > 0) {
                             obj.editField(recid, columns[0], null, event);
                             cancel = true;
@@ -5569,8 +5603,9 @@
                             break;
                         case 'w2ui-add':
                             // events
-                            var edata = obj.trigger({ phase: 'before', target: obj.name, type: 'add', recid: null });
-                            obj.trigger($.extend(edata, { phase: 'after' }));
+                            var edata2 = obj.trigger({ phase: 'before', target: obj.name, type: 'add', recid: null });
+                            if (edata2.isCancelled === true) return false;
+                            obj.trigger($.extend(edata2, { phase: 'after' }));
                             // hide all tooltips
                             setTimeout(function () { $().w2tag(); }, 20);
                             break;
@@ -5579,8 +5614,9 @@
                             var recid = null;
                             if (sel.length == 1) recid = sel[0];
                             // events
-                            var edata = obj.trigger({ phase: 'before', target: obj.name, type: 'edit', recid: recid });
-                            obj.trigger($.extend(edata, { phase: 'after' }));
+                            var edata2 = obj.trigger({ phase: 'before', target: obj.name, type: 'edit', recid: recid });
+                            if (edata2.isCancelled === true) return false;
+                            obj.trigger($.extend(edata2, { phase: 'after' }));
                             // hide all tooltips
                             setTimeout(function () { $().w2tag(); }, 20);
                             break;
