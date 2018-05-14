@@ -169,6 +169,20 @@ var w2utils = (function ($) {
         return re.test(val);
     }
 
+    /*
+     * 'parseDate(val)' or 'new Date(val)' when date is like "YYYY-MM-DD" should
+     * not be used. It is undefined before ES5 and weird after (use GMT encoding).
+     * catch and fix that situation when val is potentially a string.
+     */
+    function parseDateDefined(val) {
+        if (typeof val === "string" && val.length === 10 &&
+            val.charAt(4) === "-" && val.charAt(7) === "-") {
+                val += "T00:00:00";	/* force timestamp mode */
+        }
+        val = new Date(val);
+        return val;
+    }
+
     function isDate (val, format, retDate) {
         if (!val) return false;
 
@@ -186,14 +200,10 @@ var w2utils = (function ($) {
             year  = val.getUTCFullYear();
             month = val.getUTCMonth() + 1;
             day   = val.getUTCDate();
-		} else if (String(new Date(val)) != 'Invalid Date') {
-            val = new Date(val);
+        } else if (String(parseDateDefined(val)) != 'Invalid Date') {
+            val = parseDateDefined(val);
             if (retDate !== true) return true;
             return val;
-            val = new Date(val);
-            year  = val.getUTCFullYear();
-            month = val.getUTCMonth() + 1;
-            day   = val.getUTCDate();
         } else {
             val = String(val);
             // convert month formats
@@ -289,8 +299,8 @@ var w2utils = (function ($) {
             return val;
         } else if (parseInt(val) === val && parseInt(val) < 0) {
             return false;
-		} else if (String(new Date(val)) != 'Invalid Date') {
-            val = new Date(val);
+        } else if (String(parseDateDefined(val)) != 'Invalid Date') {
+            val = parseDateDefined(val);
             if (retDate !== true) return true;
             return val;
         } else {
@@ -321,7 +331,7 @@ var w2utils = (function ($) {
         } else if (parseInt(dateStr) == dateStr && parseInt(dateStr) > 0) {
             d1 = new Date(parseInt(dateStr));
         } else {
-            d1 = new Date(dateStr);
+            d1 = parseDateDefined(dateStr);
         }
         if (String(d1) === 'Invalid Date') return '';
 
@@ -381,7 +391,7 @@ var w2utils = (function ($) {
 
     function date (dateStr) {
         if (dateStr === '' || dateStr == null || (typeof dateStr === 'object' && !dateStr.getMonth)) return '';
-        var d1 = new Date(dateStr);
+        var d1 = parseDateDefined(dateStr);
         if (w2utils.isInt(dateStr)) d1 = new Date(Number(dateStr)); // for unix timestamps
         if (String(d1) === 'Invalid Date') return '';
 
@@ -432,7 +442,7 @@ var w2utils = (function ($) {
         if (!format) format = this.settings.dateFormat;
         if (dateStr === '' || dateStr == null || (typeof dateStr === 'object' && !dateStr.getMonth)) return '';
 
-        var dt = new Date(dateStr);
+        var dt = parseDateDefined(dateStr);
         if (w2utils.isInt(dateStr)) dt = new Date(Number(dateStr)); // for unix timestamps
         if (String(dt) === 'Invalid Date') return '';
 
@@ -456,12 +466,10 @@ var w2utils = (function ($) {
     }
 
     function formatTime (dateStr, format) { // IMPORTANT dateStr HAS TO BE valid JavaScript Date String
-        var months = w2utils.settings.shortmonths;
-        var fullMonths = w2utils.settings.fullmonths;
         if (!format) format = this.settings.timeFormat;
         if (dateStr === '' || dateStr == null || (typeof dateStr === 'object' && !dateStr.getMonth)) return '';
 
-        var dt = new Date(dateStr);
+        var dt = parseDateDefined(dateStr);
         if (w2utils.isInt(dateStr)) dt  = new Date(Number(dateStr)); // for unix timestamps
         if (w2utils.isTime(dateStr)) {
             var tmp = w2utils.isTime(dateStr, true);
