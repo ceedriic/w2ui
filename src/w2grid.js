@@ -1493,8 +1493,8 @@
                         $range.find('.w2ui-selection-resizer').hide();
                     }
                     if (first.recid != null && last.recid != null && td1f.length > 0 && td2f.length > 0) {
-                        var _left = (td1f.position().left - 1 + rec1.scrollLeft());
-                        var _top  = (td1f.position().top - 1 + rec1.scrollTop());
+                        var _left = (td1f.position().left - 1 /* + rec1.scrollLeft() */);
+                        var _top  = (td1f.position().top - 1 /* + rec1.scrollTop() */);
                         $range.show().css({
                             left    : (_left > 0 ? _left : 0) + 'px',
                             top     : (_top > 0 ? _top : 0) + 'px',
@@ -1526,8 +1526,8 @@
                         $range.css('border-left', '0px');
                     }
                     if (first.recid != null && last.recid != null && td1.length > 0 && td2.length > 0) {
-                        var _left = (td1.position().left - 1 + rec2.scrollLeft());
-                        var _top  = (td1.position().top - 1 + rec2.scrollTop());
+                        var _left = (td1.position().left - 1 /* + rec2.scrollLeft() */);
+                        var _top  = (td1.position().top - 1 /* + rec2.scrollTop() */);
                         $range.show().css({
                             left    : (_left > 0 ? _left : 0) + 'px',
                             top     : (_top > 0 ? _top : 0) + 'px',
