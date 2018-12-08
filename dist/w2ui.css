@@ -2061,7 +2061,7 @@ button.w2ui-btn-small:focus:before {
   filter: progid:dximagetransform.microsoft.gradient(startColorstr='#fff9f9f9', endColorstr='#ffe4e4e4', GradientType=0);
 }
 .w2ui-grid .w2ui-grid-body table .w2ui-head > div {
-  padding: 7px 3px;
+  padding: 5px 3px;
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
@@ -2131,7 +2131,7 @@ button.w2ui-btn-small:focus:before {
   text-align: center;
 }
 .w2ui-grid .w2ui-grid-body table td.w2ui-grid-data > div {
-  padding: 3px 3px 3px 3px;
+  padding: 2px 3px;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
