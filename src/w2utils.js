@@ -177,9 +177,10 @@ var w2utils = (function ($) {
     function parseDateDefined(val) {
         if (typeof val === "string" && val.length === 10 &&
             val.charAt(4) === "-" && val.charAt(7) === "-") {
-                val += "T00:00:00";	/* force timestamp mode */
-        }
-        val = new Date(val);
+            var b = val.split(/\D/);
+            val = new Date(b[0], b[1]-1, b[2]);
+        } else
+            val = new Date(val);
         return val;
     }
 
