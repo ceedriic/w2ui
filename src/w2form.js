@@ -1189,6 +1189,7 @@
                     case 'color':
                     case 'date':
                     case 'time':
+                    case 'datetime':
                         field.el.value = value;
                         $(field.el).w2field($.extend({}, field.options, { type: field.type }));
                         break;
